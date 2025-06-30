@@ -6,7 +6,8 @@ import JoinLobby from './components/JoinLobby';
 import PlayerView from './components/PlayerView';
 import SpectatorView from './components/SpectatorView';
 import SpectatorLobbyList from './components/SpectatorLobbyList';
-import CameraFeed from './components/CameraFeed'; // Ensure CameraFeed is also imported if used directly or passed down
+import CameraFeed from './components/CameraFeed'; // Keep CameraFeed import for PlayerView and new SpectatorPlayerView
+import SpectatorPlayerView from './components/SpectatorPlayerView'; // New Import
 
 function App() {
   const WS_URL = 'ws://localhost:8080';
@@ -14,14 +15,14 @@ function App() {
   const [readyState, setReadyState] = useState(0); // 0: CONNECTING, 1: OPEN, 2: CLOSING, 3: CLOSED
 
   // Game-related states
-  const [currentPage, setCurrentPage] = useState('landing'); // 'landing', 'gameOptions', 'createLobby', 'joinLobby', 'player', 'spectatorLobbyList', 'spectator'
+  const [currentPage, setCurrentPage] = useState('landing'); // 'landing', 'gameOptions', 'createLobby', 'joinLobby', 'player', 'spectatorLobbyList', 'spectator', 'spectatorPlayerDetail'
   const [isGameActive, setIsGameActive] = useState(false);
   const [playerName, setPlayerName] = useState('');
   const [playerScore, setPlayerScore] = useState(0);
   const [isShooting, setIsShooting] = useState(false);
   const [isHit, setIsHit] = useState(false);
   const [selectedSpectatorPlayerId, setSelectedSpectatorPlayerId] = useState(null);
-  const [selectedSpectatorLobbyId, setSelectedSpectatorLobbyId] = useState(null); // New state for selected spectator lobby
+  const [selectedSpectatorLobbyId, setSelectedSpectatorLobbyId] = useState(null);
 
   // Updated spectatorPlayers to include lobbyId for filtering
   const [spectatorPlayers, setSpectatorPlayers] = useState([
@@ -48,14 +49,12 @@ function App() {
 
     ws.current.onopen = () => {
       console.log('WebSocket connection opened.');
-      setReadyState(WebSocket.OPEN); // Use WebSocket.OPEN
+      setReadyState(WebSocket.OPEN);
     };
 
     ws.current.onmessage = (event) => {
       try {
         // This part was removed as per user request to remove chat functionality.
-        // const parsedMessage = JSON.parse(event.data);
-        // setMessages((prevMessages) => [...prevMessages, parsedMessage]);
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
       }
@@ -63,14 +62,11 @@ function App() {
 
     ws.current.onclose = () => {
       console.log('WebSocket connection closed.');
-      setReadyState(WebSocket.CLOSED); // Use WebSocket.CLOSED
-      // Implement reconnect logic if needed, or rely on browser auto-reconnect if it's handling it.
-      // For this example, we will just log the closed state.
+      setReadyState(WebSocket.CLOSED);
     };
 
     ws.current.onerror = (event) => {
       console.error('WebSocket error:', event);
-      // setReadyState can be set to a custom error state if desired
     };
 
     // Clean up WebSocket connection on component unmount
@@ -79,23 +75,21 @@ function App() {
         ws.current.close();
       }
     };
-  }, []); // Empty dependency array means this effect runs once on mount
+  }, []);
 
   // Dynamic Tailwind CSS CDN injection
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://cdn.tailwindcss.com';
-    script.async = true; // Load asynchronously
+    script.async = true;
     document.head.appendChild(script);
 
-    // Optional: Clean up the script if the component unmounts
     return () => {
-      // Check if document.head contains the script before attempting to remove it
       if (document.head.contains(script)) {
         document.head.removeChild(script);
       }
     };
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+  }, []);
 
   const connectionStatusMap = {
     [WebSocket.CONNECTING]: 'Connecting',
@@ -118,12 +112,13 @@ function App() {
 
   const goToSpectatorView = () => {
     setCurrentPage('spectatorLobbyList');
-    setSelectedSpectatorLobbyId(null); // Clear selected lobby when going to list
+    setSelectedSpectatorLobbyId(null);
+    setSelectedSpectatorPlayerId(null); // Ensure player ID is also cleared
   };
 
   const goToLandingPage = () => {
     setSelectedSpectatorPlayerId(null);
-    setSelectedSpectatorLobbyId(null); // Clear selected lobby
+    setSelectedSpectatorLobbyId(null);
     setIsGameActive(false);
     setCurrentPage('landing');
     setPlayerScore(0);
@@ -146,13 +141,21 @@ function App() {
     }
   };
 
-  const viewPlayerCamera = (playerId) => {
+  // Modified viewPlayerCamera to navigate to the new SpectatorPlayerView
+  const onViewSpectatorPlayerDetails = (playerId) => {
     setSelectedSpectatorPlayerId(playerId);
+    setCurrentPage('spectatorPlayerDetail'); // New page state
   };
 
   const backToSpectatorLobbies = () => {
     setCurrentPage('spectatorLobbyList');
-    setSelectedSpectatorPlayerId(null); // Clear selected player
+    setSelectedSpectatorPlayerId(null);
+  };
+
+  // Function to go back from SpectatorPlayerView to SpectatorView (lobby players list)
+  const backToSpectatorPlayersInLobby = () => {
+    setCurrentPage('spectator');
+    setSelectedSpectatorPlayerId(null);
   };
 
   // Lobby-related navigation
@@ -173,7 +176,7 @@ function App() {
       maxPlayers: lobbyDetails.maxPlayers,
     };
     setActiveLobbies(prev => [...prev, newLobby]);
-    goToPlayerView(); // Move to player view after creating a lobby
+    goToPlayerView();
   };
 
   const onJoinLobbyConfirm = (lobbyId) => {
@@ -184,10 +187,9 @@ function App() {
         : lobby
     );
     setActiveLobbies(updatedLobbies);
-    goToPlayerView(); // Move to player view after joining a lobby
+    goToPlayerView();
   };
 
-  // New function for spectating a specific lobby
   const onViewSpectatorLobby = (lobbyId) => {
     setSelectedSpectatorLobbyId(lobbyId);
     setCurrentPage('spectator');
@@ -244,12 +246,19 @@ function App() {
         )}
         {currentPage === 'spectator' && (
           <SpectatorView
-            goToLandingPage={goToLandingPage}
+            // goToLandingPage={goToLandingPage} // Consider if this should be back to lobbies instead
             selectedSpectatorLobbyId={selectedSpectatorLobbyId}
-            viewPlayerCamera={viewPlayerCamera}
+            onViewPlayerDetails={onViewSpectatorPlayerDetails} // Pass new handler
             backToSpectatorLobbies={backToSpectatorLobbies}
             spectatorPlayers={spectatorPlayers}
             activeLobbies={activeLobbies}
+          />
+        )}
+        {currentPage === 'spectatorPlayerDetail' && ( // New conditional render for player detail
+          <SpectatorPlayerView
+            onBack={backToSpectatorPlayersInLobby} // Go back to the lobby's player list
+            selectedPlayerId={selectedSpectatorPlayerId}
+            spectatorPlayers={spectatorPlayers}
           />
         )}
       </div>
