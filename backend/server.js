@@ -7,6 +7,7 @@ const wss = new WebSocket.Server({ server }); // Attach WebSocket server to the 
 const port = 8080;
 
 // Store connected clients
+
 const clients = {};
 
 wss.on('connection', function connection(ws) {
