@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useWebSocket, { ReadyState } from 'react-use-websocket';
+import CameraFeed from './components/CameraFeed';
 
 function App() {
   const WS_URL = 'ws://localhost:8080';
@@ -45,6 +46,7 @@ function App() {
   return (
     <div style={{ padding: '20px' }}>
       <h1>React WebSocket Chat</h1>
+      <CameraFeed />
       <p>Connection Status: {connectionStatus}</p>
 
       <div style={{ border: '1px solid #ccc', height: '300px', overflowY: 'scroll', marginBottom: '10px', padding: '10px' }}>
