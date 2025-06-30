@@ -1,11 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-// CameraFeed component for displaying a live camera feed with a crosshair
 function CameraFeed({ showCrosshair = false }) {
   const videoRef = useRef(null);
   const [stream, setStream] = useState(null);
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // Start loading state
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function setupCamera() {
@@ -13,12 +12,11 @@ function CameraFeed({ showCrosshair = false }) {
       setError(null);
 
       try {
-        // Request access to video stream (audio is not needed for laser tag visualization)
         const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: false, // Explicitly set audio to false
+          audio: false,
         });
-        setStream(mediaStream); // Store the stream in state
+        setStream(mediaStream);
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
           videoRef.current.onloadedmetadata = () => {
@@ -26,7 +24,6 @@ function CameraFeed({ showCrosshair = false }) {
           };
         }
       } catch (err) {
-        // Handle various camera access errors
         console.error('Error accessing camera:', err);
         if (err.name === 'NotAllowedError') {
           setError('Camera access denied. Please allow camera access in your browser settings.');
@@ -39,25 +36,23 @@ function CameraFeed({ showCrosshair = false }) {
         } else {
           setError('An unexpected error occurred while accessing the camera.');
         }
-        setStream(null); // Clear stream on error
+        setStream(null);
       } finally {
-        setIsLoading(false); // End loading state regardless of success or failure
+        setIsLoading(false);
       }
     }
 
     setupCamera();
 
-    // Cleanup function: Stop camera tracks when the component unmounts
     return () => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+  }, []);
 
   return (
     <div className="w-full bg-black rounded-lg overflow-hidden border-4 border-yellow-500 mb-6 relative aspect-video flex items-center justify-center">
-      {/* Loading state overlay */}
       {isLoading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-700 bg-opacity-75 z-10 rounded-lg p-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-yellow-500 mb-3"></div>
@@ -65,7 +60,6 @@ function CameraFeed({ showCrosshair = false }) {
         </div>
       )}
 
-      {/* Error state overlay */}
       {error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-800 bg-opacity-85 z-10 rounded-lg p-4 text-center">
           <p className="text-white text-lg font-bold mb-2">Camera Error!</p>
@@ -73,30 +67,25 @@ function CameraFeed({ showCrosshair = false }) {
         </div>
       )}
 
-      {/* Video element for the camera feed */}
       <video
         ref={videoRef}
-        className={`w-full h-full object-cover rounded-md ${!stream ? 'hidden' : ''}`} // Hide video if no stream
+        className={`w-full h-full object-cover rounded-md ${!stream ? 'hidden' : ''}`}
         autoPlay
         playsInline
-        muted // Muted to avoid feedback loops
+        muted
       ></video>
 
-      {/* Initial prompt/placeholder when no stream/error */}
       {!stream && !error && !isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-700 bg-opacity-75 z-10 rounded-lg">
           <p className="text-white text-xl">Waiting for camera access...</p>
         </div>
       )}
 
-      {/* Crosshair overlay (only if showCrosshair prop is true and camera is active) */}
       {showCrosshair && stream && !error && (
         <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
           <div className="w-12 h-12 border-2 border-red-500 rounded-full flex items-center justify-center relative">
             <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-            {/* Horizontal line */}
             <div className="absolute w-full h-0.5 bg-red-500"></div>
-            {/* Vertical line */}
             <div className="absolute h-full w-0.5 bg-red-500"></div>
           </div>
         </div>
