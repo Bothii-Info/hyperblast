@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import CameraFeed from './CameraFeed';
+// CameraFeed import is no longer needed here as it's used in SpectatorPlayerView
 
 function SpectatorView({
   goToLandingPage,
   selectedSpectatorLobbyId,
-  viewPlayerCamera,
+  onViewPlayerDetails, // New prop to handle player click
   backToSpectatorLobbies,
   spectatorPlayers,
   activeLobbies,
@@ -44,7 +44,8 @@ function SpectatorView({
                 .map((player, index) => (
                   <li
                     key={player.id}
-                    onClick={() => viewPlayerCamera(player.id)}
+                    // Updated onClick to use onViewPlayerDetails
+                    onClick={() => onViewPlayerDetails(player.id)}
                     className="flex justify-between items-center bg-gray-800 p-3 rounded-md shadow-inner border border-gray-500 cursor-pointer hover:bg-gray-600 transition duration-200 transform hover:scale-[1.02]"
                   >
                     <span className="text-lg font-semibold text-white">
@@ -57,13 +58,6 @@ function SpectatorView({
           ) : (
             <p className="text-center text-gray-400 py-4">No players currently in this lobby.</p>
           )}
-
-          <p className="mt-4 text-sm text-gray-400 text-center">
-            (Note: Camera feed is your own camera, simulating the player's view if you click on a player.)
-          </p>
-          <div className="mt-6">
-            <CameraFeed showCrosshair={false} />
-          </div>
         </div>
       ) : (
         <p className="text-xl text-gray-400 text-center">Please select a lobby to view players.</p>
