@@ -11,6 +11,16 @@ function PlayerView({
   isShooting,
   isHit,
 }) {
+  const cameraRef = useRef();
+
+  // Wrap shoot handler to also trigger OCR
+  const handleShootAndDetect = () => {
+    handlePlayerShoot();
+    if (cameraRef.current && cameraRef.current.detectNumberAtCenter) {
+      cameraRef.current.detectNumberAtCenter();
+    }
+  };
+
   return (
     <div className="flex flex-col items-center w-full max-w-2xl relative min-h-[calc(100vh-100px)]">
       <button
@@ -38,7 +48,7 @@ function PlayerView({
       </div>
 
       <div className="w-full relative">
-        <CameraFeed showCrosshair={true} />
+        <CameraFeed ref={cameraRef} showCrosshair={true} />
 
         {isShooting && (
           <div className="absolute inset-0 bg-blue-500 opacity-0 animate-laser-shot rounded-lg z-30"></div>
@@ -50,7 +60,7 @@ function PlayerView({
         )}
 
         <button
-          onClick={handlePlayerShoot}
+          onClick={handleShootAndDetect}
           disabled={!isGameActive}
           className="absolute bottom-4 right-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold rounded-full shadow-lg hover:from-blue-600 hover:to-purple-700 transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed text-lg z-50"
         >
