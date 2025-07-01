@@ -10,6 +10,9 @@ let players = {}; // key: userId, value: { ws, username, role, ready, score }
 let gameStarted = false;
 let gameTimer = null;
 
+// Lobby storage
+let lobbies = {};
+
 function broadcast(type, payload) {
     const message = JSON.stringify({ type, ...payload });
     wss.clients.forEach(client => {
@@ -57,10 +60,63 @@ function tryStartGame() {
     }
 }
 
+function generateLobbyCode() {
+    // Simple 6-character alphanumeric code
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+function createLobby(hostUserId, maxPlayers = 8, name = "Lobby") {
+    const code = generateLobbyCode();
+    lobbies[code] = {
+        code,
+        host: hostUserId,
+        players: [hostUserId],
+        maxPlayers,
+        name,
+        createdAt: Date.now()
+    };
+    players[hostUserId].lobbyCode = code;
+    console.log(`Lobby created: code=${code}, host=${hostUserId}, maxPlayers=${maxPlayers}, name=${name}`);
+    return code;
+}
+
+function joinLobby(userId, code) {
+    if (lobbies[code] && lobbies[code].players.length < lobbies[code].maxPlayers) {
+        lobbies[code].players.push(userId);
+        players[userId].lobbyCode = code;
+        // Print to console
+        console.log(`User ${userId} joined lobby ${code}`);
+        // Broadcast updated lobby members
+        const memberList = lobbies[code].players.map(uid => ({
+            userId: uid,
+            username: players[uid]?.username || null
+        }));
+        broadcast("lobby_members", { code, members: memberList });
+        return true;
+    }
+    return false;
+}
+
+function showLobbies() {
+    // Send all lobbies to all connected clients
+    const lobbyList = Object.values(lobbies).map(lobby => ({
+        code: lobby.code,
+        host: lobby.host,
+        playerCount: lobby.players.length
+    }));
+    broadcast("lobby_list", { lobbies: lobbyList });
+}
+
 wss.on('connection', function connection(ws) {
     const userId = Math.random().toString(36).substring(2, 9);
 
     players[userId] = { ws, role: 'spectator', ready: false, score: 0 };
+
+    // On first connection, create a default lobby if none exists
+    if (Object.keys(lobbies).length === 0) {
+        createLobby(userId, 8, "Default Lobby"); // Default lobby with name
+        showLobbies();
+    }
 
     console.log(`Client ${userId} connected`);
     ws.send(JSON.stringify({ type: 'welcome', userId }));
@@ -78,6 +134,29 @@ wss.on('connection', function connection(ws) {
         if (!player) return;
 
         switch (data.type) {
+            case 'create_lobby': {
+                const maxPlayers = typeof data.maxPlayers === 'number' && data.maxPlayers > 4 ? data.maxPlayers : 8;
+                const name = typeof data.name === 'string' && data.name.trim() ? data.name.trim() : "Lobby";
+                const code = createLobby(userId, maxPlayers, name);
+                ws.send(JSON.stringify({ type: 'lobby_created', code, maxPlayers, name }));
+                showLobbies();
+                break;
+            }
+            case 'join_lobby': {
+                const { code } = data;
+                if (joinLobby(userId, code)) {
+                    ws.send(JSON.stringify({ type: 'lobby_joined', code }));
+                    showLobbies();
+                } else {
+                    ws.send(JSON.stringify({ type: 'lobby_error', message: 'Lobby not found or full' }));
+                }
+                break;
+            }
+            case 'show_lobbies': {
+                showLobbies();
+                break;
+            }
+
             case 'join':
                 player.role = data.role === 'player' ? 'player' : 'spectator';
                 player.username = data.username || null;

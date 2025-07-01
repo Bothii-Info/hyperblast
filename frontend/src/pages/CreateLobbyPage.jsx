@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import { Users, Gamepad2, Hash } from 'lucide-react';
+import { useWebSocket } from '../WebSocketContext';
 
 /**
  * Page for creating a new game lobby.
@@ -11,39 +12,49 @@ import { Users, Gamepad2, Hash } from 'lucide-react';
  */
 const CreateLobbyPage = () => {
   const [lobbyName, setLobbyName] = useState('');
-  const [lobbyCode, setLobbyCode] = useState(''); // New state for the lobby code
   const [maxPlayers, setMaxPlayers] = useState(8);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+
+  // Listen for lobby_created response
+  React.useEffect(() => {
+    if (!lastMessage) return;
+    try {
+      const msg = JSON.parse(lastMessage);
+      if (msg.type === 'lobby_created') {
+        setIsLoading(false);
+        navigate(`/lobby/${msg.code}/waitlist`);
+      } else if (msg.type === 'lobby_list' && Array.isArray(msg.lobbies) && msg.lobbies.length > 0 && isLoading) {
+        // Use the last lobby in the list (most recently created)
+        const lastLobby = msg.lobbies[msg.lobbies.length - 1];
+        if (lastLobby && lastLobby.code) {
+          setIsLoading(false);
+          navigate(`/lobby/${lastLobby.code}/waitlist`);
+        }
+      } else if (msg.type === 'lobby_error') {
+        setIsLoading(false);
+        alert(msg.message || 'Failed to create lobby.');
+      }
+    } catch (e) {}
+  }, [lastMessage, navigate, isLoading]);
 
   const handleCreateLobby = () => {
     // Validate that both name and code are filled out
-    if (lobbyName.trim() === '' || lobbyCode.trim() === '') {
-      alert('Please provide both a Lobby Name and a Lobby Code.');
+    if (lobbyName.trim() === '') {
+      alert('Please provide a Lobby Name');
       return;
     }
-
-    // --- BACKEND INTEGRATION GUIDE ---
-    // Here, you would send a request to your backend to create a new lobby.
-    // The request would now include the user-defined lobbyCode.
-    // The backend should validate if this code is already in use.
-    //
-    // For example, using WebSocket:
-    // const ws = new WebSocket('ws://localhost:8080');
-    // ws.onopen = () => {
-    //   ws.send(JSON.stringify({
-    //     type: 'create_lobby',
-    //     payload: { 
-    //       name: lobbyName,
-    //       code: lobbyCode, // Send the custom code
-    //       maxPlayers: maxPlayers 
-    //     }
-    //   }));
-    // };
-    // The backend would then confirm creation or send an error if the code is taken.
-    
-    console.log('Creating lobby with details:', { lobbyName, lobbyCode, maxPlayers });
-    // Navigate to the waitlist page using the custom lobby code as the ID
-    navigate(`/lobby/${lobbyCode.trim()}/waitlist`);
+    if (wsStatus !== 'open') {
+      alert('WebSocket not connected.');
+      return;
+    }
+    setIsLoading(true);
+    sendMessage({
+      type: 'create_lobby',
+      name: lobbyName,
+      maxPlayers: maxPlayers
+    });
   };
 
   return (
@@ -59,14 +70,7 @@ const CreateLobbyPage = () => {
               value={lobbyName}
               onChange={(e) => setLobbyName(e.target.value)}
             />
-            {/* New Input for Lobby Code */}
-            <Input
-              placeholder="Create a Lobby Code (e.g., ROOFTOP)"
-              value={lobbyCode}
-              onChange={(e) => setLobbyCode(e.target.value)}
-            />
             
-            {/* Slider for Max Players */}
             <div className="space-y-3 rounded-lg bg-gray-800 p-4">
               <label htmlFor="max-players" className="flex items-center justify-between text-lg font-medium text-gray-300">
                 <span className="flex items-center gap-2"><Users size={20} /> Max Players</span>
@@ -85,9 +89,13 @@ const CreateLobbyPage = () => {
             </div>
           </div>
           
-          <Button onClick={handleCreateLobby} className="flex items-center justify-center gap-2">
-            <Gamepad2 size={20} />
-            <span>Create and Join</span>
+          <Button onClick={handleCreateLobby} className="flex items-center justify-center gap-2" disabled={isLoading}>
+            {isLoading ? (
+              <span className="animate-spin mr-2 h-5 w-5 border-2 border-t-2 border-indigo-400 border-t-transparent rounded-full"></span>
+            ) : (
+              <Gamepad2 size={20} />
+            )}
+            <span>{isLoading ? 'Creating...' : 'Create and Join'}</span>
           </Button>
         </div>
       </main>
