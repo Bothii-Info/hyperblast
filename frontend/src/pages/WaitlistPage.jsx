@@ -55,7 +55,7 @@ const WaitlistPage = () => {
   const handleStart = () => {
     if (isHost && allPlayersReady) {
       setIsStarting(true);
-      setCountdown(30);
+      setCountdown(3); // Set countdown to 3 seconds instead of 30
     }
   };
 
