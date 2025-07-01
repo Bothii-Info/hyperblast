@@ -6,7 +6,8 @@
     "scripts": {
         "start": "concurrently \"npm run start --prefix backend\" \"npm run start --prefix frontend\"",
         "install-all": "npm install && npm install --prefix backend && npm install --prefix frontend",
-        "postinstall": "npm run install-all"
+        "postinstall": "npm run install-all",
+        "build": "npm run build --prefix frontend && npm run build --prefix backend"
     },
     "keywords": [
         "lazer-tag",
