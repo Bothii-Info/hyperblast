@@ -40,10 +40,16 @@ const WaitlistPage = () => {
         setPlayers(msg.members.map(p => ({
           id: p.userId,
           name: p.username || `Player ${p.userId.substring(0, 4)}`,
-          isHost: !!p.isHost,
           isReady: !!p.isReady
         })));
-        // Optionally set currentUserId if you can match by session or userId
+        // Set currentUserId if not already set and userId is present in the list
+        if (!currentUserId && msg.members.length > 0) {
+          // Try to find the userId from a unique identifier (e.g., from localStorage or a welcome message)
+          const storedId = localStorage.getItem('userId');
+          if (storedId && msg.members.some(m => m.userId === storedId)) {
+            setCurrentUserId(storedId);
+          }
+        }
       }
       // Handle messages that update lobby state (e.g., player joined, player ready, lobby created/joined)
       if (msg.type === 'lobby_state_update') { // Assuming a message type for lobby state updates
@@ -135,18 +141,17 @@ const WaitlistPage = () => {
           {/* --- END LOBBY USER LIST --- */}
 
           {/* READY BUTTON FOR CURRENT USER */}
-          {!isStarting && (
+          {!isStarting && currentUser && (
             <div className="mb-6 flex justify-center">
               <Button
                 onClick={() => {
                   // Send ready/unready state to backend
-                  sendMessage({ type: 'set_ready', code: lobbyId, ready: !currentUser?.isReady });
-                  // Optimistically update local state
-                  setPlayers(players.map(p => p.id === currentUserId ? { ...p, isReady: !p.isReady } : p));
+                  sendMessage({ type: 'set_ready', code: lobbyId, ready: !currentUser.isReady });
+                  // Do NOT optimistically update local state; wait for backend update
                 }}
-                className={`px-8 py-2 text-lg font-semibold transition-colors duration-150 ${currentUser?.isReady ? 'bg-green-700/80 hover:bg-green-600/80' : 'bg-gray-700/80 hover:bg-green-700/80'}`}
+                className={`px-8 py-2 text-lg font-semibold transition-colors duration-150 ${currentUser.isReady ? 'bg-green-700/80 hover:bg-green-600/80' : 'bg-green-800/80 hover:bg-green-700/80'}`}
               >
-                {currentUser?.isReady ? 'Unready' : 'Ready'}
+                {currentUser.isReady ? 'Unready' : 'Ready'}
               </Button>
             </div>
           )}

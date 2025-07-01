@@ -19,6 +19,15 @@ export function WebSocketProvider({ children }) {
     ws.current.onerror = () => setWsStatus('error');
     ws.current.onmessage = (event) => {
       setLastMessage(event.data);
+      // Store userId from welcome message
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'welcome' && msg.userId) {
+          localStorage.setItem('userId', msg.userId);
+        }
+      } catch (e) {
+        // Ignore parse errors for non-JSON messages
+      }
     };
 
     return () => {
