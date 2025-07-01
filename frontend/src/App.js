@@ -127,19 +127,17 @@ function App() {
   const handlePlayerShoot = () => {
     if (isGameActive && currentPage === 'player') {
       setIsShooting(true);
-      const didHit = Math.random() > 0.6;
-      if (didHit) {
-        setPlayerScore(prevScore => prevScore + 10);
-        setIsHit(true);
-      } else {
-        setIsHit(false);
-      }
+
       setTimeout(() => {
         setIsShooting(false);
         setIsHit(false);
       }, 200);
     }
   };
+
+  const handleIncreaseScore = (increaseAmount) => {
+    setPlayerScore(playerScore + 50);
+  }
 
   // Modified viewPlayerCamera to navigate to the new SpectatorPlayerView
   const onViewSpectatorPlayerDetails = (playerId) => {
@@ -242,6 +240,7 @@ function App() {
             handlePlayerShoot={handlePlayerShoot}
             isShooting={isShooting}
             isHit={isHit}
+            onIncreaseScore={handleIncreaseScore}
           />
         )}
         {currentPage === 'spectator' && (
