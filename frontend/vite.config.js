@@ -8,9 +8,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     host: '0.0.0.0',
-    https: {
-      key: fs.readFileSync('../192.168.47.100-key.pem'),
-      cert: fs.readFileSync('../192.168.47.100.pem'),
-    },
+    // https: {
+    //   key: fs.readFileSync('../192.168.47.100-key.pem'),
+    //   cert: fs.readFileSync('../192.168.47.100.pem'),
+    // },
   },
 })
