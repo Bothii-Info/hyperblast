@@ -309,6 +309,7 @@ function CameraFeed({ onPeopleDetected }) {
           style={{
             width: '100%',
             maxWidth: '640px',
+            maxHeight: '480px',
             border: '1px solid #ccc',
             borderRadius: '4px'
           }}
@@ -348,6 +349,16 @@ function CameraFeed({ onPeopleDetected }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {(
+        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+          <div className="w-12 h-12 border-2 border-red-500 rounded-full flex items-center justify-center relative">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+            <div className="absolute w-full h-0.5 bg-red-500"></div>
+            <div className="absolute h-full w-0.5 bg-red-500"></div>
+          </div>
         </div>
       )}
     </div>
