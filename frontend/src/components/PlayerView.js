@@ -9,15 +9,25 @@ function PlayerView({
   isGameActive,
   handlePlayerShoot,
   isShooting,
-  isHit,
 }) {
   const cameraRef = useRef();
+  const [isHit, setIsHit] = useState(false); // State to manage hit feedback
 
-  // Wrap shoot handler to also trigger OCR
+  const handlePlayerHit = (personId) => {
+    console.log(`Player hit detected! Person ID: ${personId}`);
+    setIsHit(true);
+    playerScore += 10;
+    setTimeout(() => {
+      setIsHit(false);
+    }, 1000); // Display "HIT!" for 1 second
+  };
+
   const handleShootAndDetect = () => {
-    handlePlayerShoot();
-    if (cameraRef.current && cameraRef.current.detectNumberAtCenter) {
-      cameraRef.current.detectNumberAtCenter();
+    handlePlayerShoot(); // Trigger the shooting animation
+    
+    // Call the detectHit method exposed by CameraFeed through the ref
+    if (cameraRef.current && cameraRef.current.detectHit) {
+      cameraRef.current.detectHit();
     }
   };
 
@@ -48,7 +58,8 @@ function PlayerView({
       </div>
 
       <div className="w-full relative">
-        <CameraFeed ref={cameraRef} showCrosshair={true} />
+        {/* Pass the ref and the onPlayerHit callback to CameraFeed */}
+        <CameraFeed ref={cameraRef} onPlayerHit={handlePlayerHit} />
 
         {isShooting && (
           <div className="absolute inset-0 bg-blue-500 opacity-0 animate-laser-shot rounded-lg z-30"></div>

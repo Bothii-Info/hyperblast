@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 
-function CameraFeed({ onPeopleDetected }) {
+// Wrap CameraFeed with forwardRef to allow PlayerView to get a ref to it
+const CameraFeed = forwardRef(({ onPeopleDetected, onPlayerHit }, ref) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const modelRef = useRef(null);
@@ -10,6 +11,38 @@ function CameraFeed({ onPeopleDetected }) {
 
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [detectedPeople, setDetectedPeople] = useState([]);
+
+  // Expose a method to the parent (PlayerView) to check for hits
+  useImperativeHandle(ref, () => ({
+    // This function will be called by PlayerView when the "Shoot Laser" button is pressed
+    detectHit: () => {
+      console.log("Attempting to detect hit...");
+      if (detectedPeople.length > 0) {
+        const hitPerson = detectedPeople.find(person => {
+          const videoWidth = videoRef.current.videoWidth;
+          const videoHeight = videoRef.current.videoHeight;
+          const centerX = videoWidth / 2;
+          const centerY = videoHeight / 2;
+
+          const [x, y, width, height] = person.bbox;
+          return centerX >= x && centerX <= (x + width) &&
+            centerY >= y && centerY <= (y + height);
+        });
+
+        if (hitPerson) {
+          console.log(`Hit detected on Person ${hitPerson.id}!`);
+          if (onPlayerHit) {
+            onPlayerHit(hitPerson.id); // Pass the ID of the hit person
+          }
+          return true;
+        }
+      }
+      console.log("No hit detected.");
+      return false;
+    }
+  }));
+
+  // ... (rest of your CameraFeed component code remains the same)
 
   // Load TensorFlow.js and COCO-SSD model
   useEffect(() => {
@@ -363,6 +396,6 @@ function CameraFeed({ onPeopleDetected }) {
       )}
     </div>
   );
-}
+});
 
 export default CameraFeed;

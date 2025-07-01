@@ -127,13 +127,8 @@ function App() {
   const handlePlayerShoot = () => {
     if (isGameActive && currentPage === 'player') {
       setIsShooting(true);
-      const didHit = Math.random() > 0.6;
-      if (didHit) {
-        setPlayerScore(prevScore => prevScore + 10);
-        setIsHit(true);
-      } else {
-        setIsHit(false);
-      }
+      if (didHit)
+      
       setTimeout(() => {
         setIsShooting(false);
         setIsHit(false);
