@@ -20,12 +20,14 @@ const JoinLobbyPage = () => {
     try {
       const msg = JSON.parse(lastMessage);
       if (msg.type === 'lobby_joined') {
-        navigate(`/lobby/${msg.code}/waitlist`);
+        // Use the code from the message, or fallback to the entered code
+        const code = msg.code || lobbyCode.trim().toUpperCase();
+        navigate(`/lobby/${code}/waitlist`);
       } else if (msg.type === 'lobby_error') {
         alert(msg.message || 'Failed to join lobby.');
       }
     } catch (e) {}
-  }, [lastMessage, navigate]);
+  }, [lastMessage, navigate, lobbyCode]);
 
   const handleJoinByCode = () => {
     if (lobbyCode.trim() === '') {

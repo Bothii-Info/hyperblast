@@ -391,10 +391,13 @@ const PlayerPage = () => {
   // --- Event Handlers ---
   const handlePlayerHit = (personId) => {
     setShowHitIndicator('hit');
-    if (ws.current && ws.current.readyState === 1) {
-      ws.current.send(JSON.stringify({ type: 'hit', points: 50 }));
-    }
-    setScore(s => s + 50);
+    setScore(s => {
+      const newScore = s + 50;
+      if (ws.current && ws.current.readyState === 1) {
+        ws.current.send(JSON.stringify({ type: 'score', score: newScore }));
+      }
+      return newScore;
+    });
   };
 
   // Detect hit when shooting
