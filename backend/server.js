@@ -84,6 +84,14 @@ function joinLobby(userId, code) {
     if (lobbies[code] && lobbies[code].players.length < lobbies[code].maxPlayers) {
         lobbies[code].players.push(userId);
         players[userId].lobbyCode = code;
+        // Print to console
+        console.log(`User ${userId} joined lobby ${code}`);
+        // Broadcast updated lobby members
+        const memberList = lobbies[code].players.map(uid => ({
+            userId: uid,
+            username: players[uid]?.username || null
+        }));
+        broadcast("lobby_members", { code, members: memberList });
         return true;
     }
     return false;

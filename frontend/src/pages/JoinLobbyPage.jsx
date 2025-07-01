@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import { Hash, LogIn } from 'lucide-react';
+import { useWebSocket } from '../WebSocketContext';
 
 /**
  * A focused page for players to join a private lobby using a specific code.
@@ -12,29 +13,33 @@ import { Hash, LogIn } from 'lucide-react';
 const JoinLobbyPage = () => {
   const [lobbyCode, setLobbyCode] = useState('');
   const navigate = useNavigate();
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+
+  React.useEffect(() => {
+    if (!lastMessage) return;
+    try {
+      const msg = JSON.parse(lastMessage);
+      if (msg.type === 'lobby_joined') {
+        navigate(`/lobby/${msg.code}/waitlist`);
+      } else if (msg.type === 'lobby_error') {
+        alert(msg.message || 'Failed to join lobby.');
+      }
+    } catch (e) {}
+  }, [lastMessage, navigate]);
 
   const handleJoinByCode = () => {
     if (lobbyCode.trim() === '') {
       alert('Please enter a lobby code to join.');
       return;
     }
-
-    // --- BACKEND INTEGRATION GUIDE ---
-    // Here, you would send a WebSocket message to your server to validate the lobby code.
-    // The server should check if the lobby exists and has space.
-    //
-    // For example:
-    // ws.send(JSON.stringify({
-    //   type: 'join_lobby',
-    //   payload: { code: lobbyCode.trim().toUpperCase() }
-    // }));
-    //
-    // The server would then respond with a success or failure message.
-    // On success, the server could trigger the navigation for the client,
-    // or the client could navigate after receiving a 'join_success' message.
-
-    // For now, we'll optimistically navigate to the waitlist page.
-    navigate(`/lobby/${lobbyCode.trim().toUpperCase()}/waitlist`);
+    if (wsStatus !== 'open') {
+      alert('WebSocket not connected.');
+      return;
+    }
+    sendMessage({
+      type: 'join_lobby',
+      code: lobbyCode.trim().toUpperCase()
+    });
   };
 
   return (
@@ -55,7 +60,7 @@ const JoinLobbyPage = () => {
           {/* Input Form */}
           <form onSubmit={(e) => { e.preventDefault(); handleJoinByCode(); }} className="w-full space-y-3">
             <Input
-              placeholder="LOBBY-CODE"
+              placeholder="ABCDEF"
               value={lobbyCode}
               // Automatically convert input to uppercase for consistency
               onChange={(e) => setLobbyCode(e.target.value.toUpperCase())}
