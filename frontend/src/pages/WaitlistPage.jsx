@@ -2,8 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import Button from '../components/Button';
-import HostWaitlistPage from './HostWaitlistPage';
-import PlayerWaitlistPage from './PlayerWaitlistPage';
 import { LogOut } from 'lucide-react';
 import { useWebSocket } from '../WebSocketContext'; // Import useWebSocket
 
@@ -25,7 +23,6 @@ const WaitlistPage = () => {
 
   // --- DERIVED STATE ---
   const currentUser = useMemo(() => players.find(p => p.id === currentUserId), [players, currentUserId]);
-  const isHost = currentUser?.isHost || false;
   const allPlayersReady = useMemo(() => players.every(p => p.isReady), [players]);
 
   // --- WEBSOCKET & COUNTDOWN LOGIC ---
@@ -89,7 +86,7 @@ const WaitlistPage = () => {
   };
 
   const handleStart = () => {
-    if (isHost && allPlayersReady) {
+    if (allPlayersReady) {
       setIsStarting(true);
       setCountdown(3); // Set countdown to 3 seconds instead of 30
       // Ideally, send a 'start_game' message to the WebSocket here
@@ -103,29 +100,62 @@ const WaitlistPage = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-900 text-white">
-      <Header title={lobbyName} showBackButton={!isStarting} /> {/* Use lobbyName as title */}
+      <Header title={lobbyName} showBackButton={!isStarting} />
+
+      {/* LOBBY CODE AT TOP */}
+      <div className="mx-auto mt-4 w-full max-w-2xl text-center">
+        <div className="inline-block rounded bg-gray-800/80 px-4 py-2 text-lg font-mono font-semibold text-blue-300 shadow">
+          Lobby Code: <span className="text-white">{lobbyId}</span>
+        </div>
+      </div>
 
       <main className="flex flex-grow flex-col justify-center p-4 md:p-6">
         <div className="mx-auto w-full max-w-2xl">
-          {isHost ? (
-            <HostWaitlistPage
-              lobbyId={lobbyId}
-              players={players}
-              allPlayersReady={allPlayersReady}
-              isStarting={isStarting}
-              countdown={countdown}
-              onStart={handleStart}
-              onCancel={handleCancel}
-            />
-          ) : (
-            <PlayerWaitlistPage
-              lobbyCode={lobbyId}
-              currentUserId={currentUserId}
-              isStarting={isStarting}
-              countdown={countdown}
-              onReadyToggle={handleReadyToggle}
-              onNameChange={handleNameChange}
-            />
+          {/* --- LOBBY USER LIST --- */}
+          <div className="mb-6 rounded-lg bg-gray-800/80 p-4 shadow">
+            <h2 className="mb-2 text-lg font-semibold text-blue-300">Players in Lobby</h2>
+            <ul className="space-y-1">
+              {players.map((p) => (
+                <li
+                  key={p.id}
+                  className={`flex items-center gap-2 rounded px-2 py-1 ${p.id === currentUserId ? 'font-bold text-green-300' : ''}`}
+                >
+                  <span>{p.name}</span>
+                  {/* Ready status icon */}
+                  {p.isReady ? (
+                    <span className="ml-2 text-green-400" title="Ready">&#10003;</span> // green check
+                  ) : (
+                    <span className="ml-2 text-red-400" title="Not Ready">&#10007;</span> // red x
+                  )}
+                  {p.id === currentUserId && !p.isReady && <span className="ml-2 text-xs text-gray-400">(You)</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {/* --- END LOBBY USER LIST --- */}
+
+          {/* READY BUTTON FOR CURRENT USER */}
+          {!isStarting && (
+            <div className="mb-6 flex justify-center">
+              <Button
+                onClick={() => {
+                  // Send ready/unready state to backend
+                  sendMessage({ type: 'set_ready', code: lobbyId, ready: !currentUser?.isReady });
+                  // Optimistically update local state
+                  setPlayers(players.map(p => p.id === currentUserId ? { ...p, isReady: !p.isReady } : p));
+                }}
+                className={`px-8 py-2 text-lg font-semibold transition-colors duration-150 ${currentUser?.isReady ? 'bg-green-700/80 hover:bg-green-600/80' : 'bg-gray-700/80 hover:bg-green-700/80'}`}
+              >
+                {currentUser?.isReady ? 'Unready' : 'Ready'}
+              </Button>
+            </div>
+          )}
+
+          {/* COUNTDOWN IF STARTING */}
+          {isStarting && (
+            <div className="mb-6 text-center text-2xl font-bold text-blue-400">
+              Game starting in {countdown}...
+            </div>
           )}
         </div>
       </main>

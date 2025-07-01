@@ -208,6 +208,17 @@ wss.on('connection', function connection(ws) {
                 break;
             }
 
+            case 'set_ready': {
+                // New: handle ready/unready toggle from frontend
+                if (player.role === 'player' && typeof data.ready === 'boolean') {
+                    player.ready = data.ready;
+                    console.log(`${player.username || userId} set ready: ${data.ready}`);
+                    updateLobbyStatus();
+                    tryStartGame();
+                }
+                break;
+            }
+
             default:
                 console.warn("Unknown message type:", data.type);
         }
