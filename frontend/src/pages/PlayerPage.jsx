@@ -29,7 +29,7 @@ const PlayerPage = () => {
   const [gameTime, setGameTime] = useState(300); // 5 minutes in seconds
   const [showHitIndicator, setShowHitIndicator] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false); // New state for the menu
-  const [gameStarting, setGameStarting] = useState(true);
+  const [gameStarting, setGameStarting] = useState(false);
   const [startCountdown, setStartCountdown] = useState(3); // 3 seconds instead of 30
 
   // --- Game Start Countdown ---
