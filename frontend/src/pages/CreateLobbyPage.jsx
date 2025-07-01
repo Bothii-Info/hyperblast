@@ -12,7 +12,6 @@ import { useWebSocket } from '../WebSocketContext';
  */
 const CreateLobbyPage = () => {
   const [lobbyName, setLobbyName] = useState('');
-  const [lobbyCode, setLobbyCode] = useState(''); // New state for the lobby code
   const [maxPlayers, setMaxPlayers] = useState(8);
   const navigate = useNavigate();
   const { sendMessage, lastMessage, wsStatus } = useWebSocket();
@@ -32,8 +31,8 @@ const CreateLobbyPage = () => {
 
   const handleCreateLobby = () => {
     // Validate that both name and code are filled out
-    if (lobbyName.trim() === '' || lobbyCode.trim() === '') {
-      alert('Please provide both a Lobby Name and a Lobby Code.');
+    if (lobbyName.trim() === '') {
+      alert('Please provide a Lobby Name');
       return;
     }
     if (wsStatus !== 'open') {
@@ -43,7 +42,6 @@ const CreateLobbyPage = () => {
     sendMessage({
       type: 'create_lobby',
       name: lobbyName,
-      code: lobbyCode.trim().toUpperCase(),
       maxPlayers: maxPlayers
     });
   };
@@ -61,14 +59,7 @@ const CreateLobbyPage = () => {
               value={lobbyName}
               onChange={(e) => setLobbyName(e.target.value)}
             />
-            {/* New Input for Lobby Code */}
-            <Input
-              placeholder="Create a Lobby Code (e.g., ROOFTOP)"
-              value={lobbyCode}
-              onChange={(e) => setLobbyCode(e.target.value)}
-            />
             
-            {/* Slider for Max Players */}
             <div className="space-y-3 rounded-lg bg-gray-800 p-4">
               <label htmlFor="max-players" className="flex items-center justify-between text-lg font-medium text-gray-300">
                 <span className="flex items-center gap-2"><Users size={20} /> Max Players</span>

@@ -65,17 +65,18 @@ function generateLobbyCode() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-function createLobby(hostUserId, maxPlayers = 8) {
+function createLobby(hostUserId, maxPlayers = 8, name = "Lobby") {
     const code = generateLobbyCode();
     lobbies[code] = {
         code,
         host: hostUserId,
         players: [hostUserId],
         maxPlayers,
+        name,
         createdAt: Date.now()
     };
     players[hostUserId].lobbyCode = code;
-    console.log(`Lobby created: code=${code}, host=${hostUserId}, maxPlayers=${maxPlayers}`);
+    console.log(`Lobby created: code=${code}, host=${hostUserId}, maxPlayers=${maxPlayers}, name=${name}`);
     return code;
 }
 
@@ -105,7 +106,7 @@ wss.on('connection', function connection(ws) {
 
     // On first connection, create a default lobby if none exists
     if (Object.keys(lobbies).length === 0) {
-        createLobby(userId, 8); // Default maxPlayers for first lobby
+        createLobby(userId, 8, "Default Lobby"); // Default lobby with name
         showLobbies();
     }
 
@@ -127,8 +128,9 @@ wss.on('connection', function connection(ws) {
         switch (data.type) {
             case 'create_lobby': {
                 const maxPlayers = typeof data.maxPlayers === 'number' && data.maxPlayers > 4 ? data.maxPlayers : 8;
-                const code = createLobby(userId, maxPlayers);
-                ws.send(JSON.stringify({ type: 'lobby_created', code, maxPlayers }));
+                const name = typeof data.name === 'string' && data.name.trim() ? data.name.trim() : "Lobby";
+                const code = createLobby(userId, maxPlayers, name);
+                ws.send(JSON.stringify({ type: 'lobby_created', code, maxPlayers, name }));
                 showLobbies();
                 break;
             }
