@@ -2,21 +2,35 @@ import React, { useState, useEffect } from 'react'; // Import useEffect
 import { Crown, CheckCircle2, XCircle, Pencil } from 'lucide-react';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import { useWebSocket } from '../WebSocketContext';
 
 /**
  * The waitlist view specifically for a non-host player.
  */
-const PlayerWaitlistPage = ({ players, currentUser, isStarting, countdown, onReadyToggle, onNameChange }) => {
+const PlayerWaitlistPage = ({ lobbyCode, currentUserId, isStarting, countdown, onReadyToggle, onNameChange }) => {
   const [isEditingName, setIsEditingName] = useState(false);
-  // Initialize nameInputValue based on currentUser.name, but only if currentUser exists
   const [nameInputValue, setNameInputValue] = useState('');
+  const [players, setPlayers] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
 
-  // Use useEffect to update nameInputValue when currentUser changes
+  // Listen for lobby_members updates
   useEffect(() => {
-    if (currentUser) {
-      setNameInputValue(currentUser.name);
-    }
-  }, [currentUser]);
+    if (!lastMessage) return;
+    try {
+      const msg = JSON.parse(lastMessage);
+      console.log(msg);
+      if (msg.type === 'lobby_members' && msg.code === lobbyCode) {
+        setPlayers(msg.members.map(p => ({
+          id: p.userId,
+          name: p.username || `Player ${p.userId.substring(0, 4)}`,
+          isHost: !!p.isHost,
+          isReady: !!p.isReady
+        })));
+        setCurrentUser(msg.members.find(p => p.userId === currentUserId) || null);
+      }
+    } catch (e) {}
+  }, [lastMessage, lobbyCode, currentUserId]);
 
   const handleEditName = () => {
     if (currentUser) { // Ensure currentUser exists before setting input value

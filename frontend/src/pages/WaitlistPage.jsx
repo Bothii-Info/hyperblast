@@ -14,7 +14,7 @@ import { useWebSocket } from '../WebSocketContext'; // Import useWebSocket
 const WaitlistPage = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { lastMessage } = useWebSocket(); // Use useWebSocket to receive messages
+  const { lastMessage, sendMessage, wsStatus } = useWebSocket(); // Use useWebSocket to receive messages
 
   // --- STATE MANAGEMENT ---
   const [players, setPlayers] = useState([]); // Initialize as empty array
@@ -30,10 +30,24 @@ const WaitlistPage = () => {
 
   // --- WEBSOCKET & COUNTDOWN LOGIC ---
   useEffect(() => {
-    if (!lastMessage) return;
+    if (wsStatus === 'open' && lobbyId) {
+      sendMessage({ type: 'get_lobby_members', code: lobbyId });
+    }
+  }, [wsStatus, lobbyId, sendMessage]);
 
+  useEffect(() => {
+    if (!lastMessage) return;
     try {
       const msg = JSON.parse(lastMessage);
+      if (msg.type === 'lobby_members' && msg.code === lobbyId) {
+        setPlayers(msg.members.map(p => ({
+          id: p.userId,
+          name: p.username || `Player ${p.userId.substring(0, 4)}`,
+          isHost: !!p.isHost,
+          isReady: !!p.isReady
+        })));
+        // Optionally set currentUserId if you can match by session or userId
+      }
       // Handle messages that update lobby state (e.g., player joined, player ready, lobby created/joined)
       if (msg.type === 'lobby_state_update') { // Assuming a message type for lobby state updates
         setPlayers(msg.players);
@@ -105,8 +119,8 @@ const WaitlistPage = () => {
             />
           ) : (
             <PlayerWaitlistPage
-              players={players}
-              currentUser={currentUser} // Ensure currentUser is passed
+              lobbyCode={lobbyId}
+              currentUserId={currentUserId}
               isStarting={isStarting}
               countdown={countdown}
               onReadyToggle={handleReadyToggle}

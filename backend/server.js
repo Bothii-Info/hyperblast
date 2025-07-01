@@ -99,12 +99,16 @@ function joinLobby(userId, code) {
 
 function showLobbies() {
     // Send all lobbies to all connected clients
-    const lobbyList = Object.values(lobbies).map(lobby => ({
-        code: lobby.code,
-        host: lobby.host,
-        name: lobby.name,
-        playerCount: lobby.players.length
-    }));
+    const lobbyList = Object.values(lobbies).map(lobby => {
+        const playerNames = lobby.players.map(uid => players[uid]?.username || uid);
+        console.log(`Lobby ${lobby.code} (${lobby.name}): Players: [${playerNames.join(', ')}]`);
+        return {
+            code: lobby.code,
+            host: lobby.host,
+            name: lobby.name,
+            playerCount: lobby.players.length
+        };
+    });
     broadcast("lobby_list", { lobbies: lobbyList });
 }
 
@@ -138,6 +142,9 @@ wss.on('connection', function connection(ws) {
             case 'create_lobby': {
                 const maxPlayers = typeof data.maxPlayers === 'number' && data.maxPlayers > 4 ? data.maxPlayers : 8;
                 const name = typeof data.name === 'string' && data.name.trim() ? data.name.trim() : "Lobby";
+                if (typeof data.username === 'string' && data.username.trim()) {
+                    player.username = data.username.trim();
+                }
                 const code = createLobby(userId, maxPlayers, name);
                 ws.send(JSON.stringify({ type: 'lobby_created', code, maxPlayers, name }));
                 showLobbies();
@@ -182,6 +189,24 @@ wss.on('connection', function connection(ws) {
                     updateLobbyStatus(); // Optional: could throttle this
                 }
                 break;
+
+            case 'get_lobby_members': {
+                const { code } = data;
+                if (lobbies[code]) {
+                    const memberList = lobbies[code].players.map(uid => ({
+                        userId: uid,
+                        username: players[uid]?.username || null,
+                        isHost: lobbies[code].host === uid,
+                        isReady: players[uid]?.ready || false
+                    }));
+                    // Only send to the requesting client
+                    ws.send(JSON.stringify({ type: 'lobby_members', code, members: memberList }));
+                    console.log(JSON.stringify({ type: 'lobby_members', code, members: memberList }))
+                } else {
+                    ws.send(JSON.stringify({ type: 'lobby_error', message: 'Lobby not found' }));
+                }
+                break;
+            }
 
             default:
                 console.warn("Unknown message type:", data.type);
