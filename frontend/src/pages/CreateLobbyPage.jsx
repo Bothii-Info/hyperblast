@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import { Users, Gamepad2, Hash } from 'lucide-react';
+import { useWebSocket } from '../WebSocketContext';
 
 /**
  * Page for creating a new game lobby.
@@ -14,6 +15,20 @@ const CreateLobbyPage = () => {
   const [lobbyCode, setLobbyCode] = useState(''); // New state for the lobby code
   const [maxPlayers, setMaxPlayers] = useState(8);
   const navigate = useNavigate();
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+
+  // Listen for lobby_created response
+  React.useEffect(() => {
+    if (!lastMessage) return;
+    try {
+      const msg = JSON.parse(lastMessage);
+      if (msg.type === 'lobby_created') {
+        navigate(`/lobby/${msg.code}/waitlist`);
+      } else if (msg.type === 'lobby_error') {
+        alert(msg.message || 'Failed to create lobby.');
+      }
+    } catch (e) {}
+  }, [lastMessage, navigate]);
 
   const handleCreateLobby = () => {
     // Validate that both name and code are filled out
@@ -21,29 +36,16 @@ const CreateLobbyPage = () => {
       alert('Please provide both a Lobby Name and a Lobby Code.');
       return;
     }
-
-    // --- BACKEND INTEGRATION GUIDE ---
-    // Here, you would send a request to your backend to create a new lobby.
-    // The request would now include the user-defined lobbyCode.
-    // The backend should validate if this code is already in use.
-    //
-    // For example, using WebSocket:
-    // const ws = new WebSocket('ws://localhost:8080');
-    // ws.onopen = () => {
-    //   ws.send(JSON.stringify({
-    //     type: 'create_lobby',
-    //     payload: { 
-    //       name: lobbyName,
-    //       code: lobbyCode, // Send the custom code
-    //       maxPlayers: maxPlayers 
-    //     }
-    //   }));
-    // };
-    // The backend would then confirm creation or send an error if the code is taken.
-    
-    console.log('Creating lobby with details:', { lobbyName, lobbyCode, maxPlayers });
-    // Navigate to the waitlist page using the custom lobby code as the ID
-    navigate(`/lobby/${lobbyCode.trim()}/waitlist`);
+    if (wsStatus !== 'open') {
+      alert('WebSocket not connected.');
+      return;
+    }
+    sendMessage({
+      type: 'create_lobby',
+      name: lobbyName,
+      code: lobbyCode.trim().toUpperCase(),
+      maxPlayers: maxPlayers
+    });
   };
 
   return (
