@@ -9,6 +9,7 @@ function PlayerView({
   isGameActive,
   handlePlayerShoot,
   isShooting,
+  onIncreaseScore
 }) {
   const cameraRef = useRef();
   const [isHit, setIsHit] = useState(false); // State to manage hit feedback
@@ -16,7 +17,9 @@ function PlayerView({
   const handlePlayerHit = (personId) => {
     console.log(`Player hit detected! Person ID: ${personId}`);
     setIsHit(true);
-    playerScore += 10;
+    if (onIncreaseScore) {
+      onIncreaseScore(50);
+    }
     setTimeout(() => {
       setIsHit(false);
     }, 1000); // Display "HIT!" for 1 second
@@ -24,7 +27,7 @@ function PlayerView({
 
   const handleShootAndDetect = () => {
     handlePlayerShoot(); // Trigger the shooting animation
-    
+
     // Call the detectHit method exposed by CameraFeed through the ref
     if (cameraRef.current && cameraRef.current.detectHit) {
       cameraRef.current.detectHit();
