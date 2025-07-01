@@ -29,7 +29,7 @@ const LandingPage = () => {
         </div>
 
         <div className="w-full max-w-xs space-y-4">
-          <Button onClick={() => navigate('/lobby')}>Become a Player</Button>
+          <Button onClick={() => navigate('/lobby')}>Play Game</Button>
           <Button
             onClick={() => navigate('/spectate')}
             className="bg-teal-600 hover:bg-teal-700"
