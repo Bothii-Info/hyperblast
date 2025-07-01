@@ -13,6 +13,7 @@ import { useWebSocket } from '../WebSocketContext';
 const CreateLobbyPage = () => {
   const [lobbyName, setLobbyName] = useState('');
   const [maxPlayers, setMaxPlayers] = useState(8);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { sendMessage, lastMessage, wsStatus } = useWebSocket();
 
@@ -22,12 +23,21 @@ const CreateLobbyPage = () => {
     try {
       const msg = JSON.parse(lastMessage);
       if (msg.type === 'lobby_created') {
+        setIsLoading(false);
         navigate(`/lobby/${msg.code}/waitlist`);
+      } else if (msg.type === 'lobby_list' && Array.isArray(msg.lobbies) && msg.lobbies.length > 0 && isLoading) {
+        // Use the last lobby in the list (most recently created)
+        const lastLobby = msg.lobbies[msg.lobbies.length - 1];
+        if (lastLobby && lastLobby.code) {
+          setIsLoading(false);
+          navigate(`/lobby/${lastLobby.code}/waitlist`);
+        }
       } else if (msg.type === 'lobby_error') {
+        setIsLoading(false);
         alert(msg.message || 'Failed to create lobby.');
       }
     } catch (e) {}
-  }, [lastMessage, navigate]);
+  }, [lastMessage, navigate, isLoading]);
 
   const handleCreateLobby = () => {
     // Validate that both name and code are filled out
@@ -39,6 +49,7 @@ const CreateLobbyPage = () => {
       alert('WebSocket not connected.');
       return;
     }
+    setIsLoading(true);
     sendMessage({
       type: 'create_lobby',
       name: lobbyName,
@@ -78,9 +89,13 @@ const CreateLobbyPage = () => {
             </div>
           </div>
           
-          <Button onClick={handleCreateLobby} className="flex items-center justify-center gap-2">
-            <Gamepad2 size={20} />
-            <span>Create and Join</span>
+          <Button onClick={handleCreateLobby} className="flex items-center justify-center gap-2" disabled={isLoading}>
+            {isLoading ? (
+              <span className="animate-spin mr-2 h-5 w-5 border-2 border-t-2 border-indigo-400 border-t-transparent rounded-full"></span>
+            ) : (
+              <Gamepad2 size={20} />
+            )}
+            <span>{isLoading ? 'Creating...' : 'Create and Join'}</span>
           </Button>
         </div>
       </main>
