@@ -102,6 +102,7 @@ function showLobbies() {
     const lobbyList = Object.values(lobbies).map(lobby => ({
         code: lobby.code,
         host: lobby.host,
+        name: lobby.name,
         playerCount: lobby.players.length
     }));
     broadcast("lobby_list", { lobbies: lobbyList });
@@ -114,7 +115,7 @@ wss.on('connection', function connection(ws) {
 
     // On first connection, create a default lobby if none exists
     if (Object.keys(lobbies).length === 0) {
-        createLobby(userId, 8, "Default Lobby"); // Default lobby with name
+        createLobby(userId, 8, "BBDefault"); // Default lobby with name BBDefault
         showLobbies();
     }
 

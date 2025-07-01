@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Button from '../components/Button';
 import { Users, Signal } from 'lucide-react';
+import { useWebSocket } from '../WebSocketContext';
 
 // --- DUMMY DATA ---
 // In a real application, you would fetch this data from your backend.
@@ -18,17 +19,31 @@ const dummyLobbies = [
 const SpectatorLobbyListPage = () => {
   const [lobbies, setLobbies] = useState([]);
   const navigate = useNavigate();
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
 
   useEffect(() => {
-    // --- BACKEND INTEGRATION GUIDE ---
-    // Replace this with a `fetch` call to your backend endpoint that returns active lobbies.
-    // For example:
-    // fetch('https://your-backend.com/api/lobbies')
-    //   .then(res => res.json())
-    //   .then(data => setLobbies(data))
-    //   .catch(error => console.error("Failed to fetch lobbies:", error));
-    setLobbies(dummyLobbies);
-  }, []);
+    if (wsStatus === 'open') {
+      sendMessage({ type: 'show_lobbies' });
+    }
+  }, [wsStatus, sendMessage]);
+
+  useEffect(() => {
+    if (!lastMessage) return;
+    try {
+      const msg = JSON.parse(lastMessage);
+      console.log(msg);
+      if (msg.type === 'lobby_list' && Array.isArray(msg.lobbies)) {
+        // Map backend lobby format to frontend format
+        setLobbies(msg.lobbies.map(lobby => ({
+          id: lobby.code,
+          name: lobby.name || 'Unnamed Lobby',
+          players: lobby.playerCount,
+          maxPlayers: lobby.maxPlayers || 8,
+          status: lobby.playerCount >= (lobby.maxPlayers || 8) ? 'Full' : 'Waiting',
+        })));
+      }
+    } catch (e) {}
+  }, [lastMessage]);
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-900 text-white">
