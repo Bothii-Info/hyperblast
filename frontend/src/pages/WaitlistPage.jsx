@@ -2,10 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import Button from '../components/Button';
-import HostWaitlistPage from './HostWaitlistPage';
-import PlayerWaitlistPage from './PlayerWaitlistPage';
 import { LogOut } from 'lucide-react';
 import { useWebSocket } from '../WebSocketContext'; // Import useWebSocket
+import PlayerWaitlistPage from './PlayerWaitlistPage'; // Import PlayerWaitlistPage
 
 /**
  * This component acts as a controller. It fetches shared data
@@ -14,7 +13,7 @@ import { useWebSocket } from '../WebSocketContext'; // Import useWebSocket
 const WaitlistPage = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { lastMessage } = useWebSocket(); // Use useWebSocket to receive messages
+  const { lastMessage, sendMessage, wsStatus } = useWebSocket(); // Use useWebSocket to receive messages
 
   // --- STATE MANAGEMENT ---
   const [players, setPlayers] = useState([]); // Initialize as empty array
@@ -24,21 +23,56 @@ const WaitlistPage = () => {
   const [countdown, setCountdown] = useState(30);
 
   // --- DERIVED STATE ---
-  const currentUser = useMemo(() => players.find(p => p.id === currentUserId), [players, currentUserId]);
-  const isHost = currentUser?.isHost || false;
-  const allPlayersReady = useMemo(() => players.every(p => p.isReady), [players]);
+  const currentUser = useMemo(() => {
+    if (!currentUserId || players.length === 0) return null;
+    const user = players.find(p => p.id === currentUserId);
+    return user || null;
+  }, [players, currentUserId]);
+  
+  const allPlayersReady = useMemo(() => players.length > 0 && players.every(p => p.isReady), [players]);
 
   // --- WEBSOCKET & COUNTDOWN LOGIC ---
   useEffect(() => {
-    if (!lastMessage) return;
+    if (wsStatus === 'open' && lobbyId) {
+      // Try to get userId from localStorage
+      const storedId = localStorage.getItem('userId');
+      if (storedId) {
+        setCurrentUserId(storedId);
+      }
+      
+      // Request lobby members
+      sendMessage({ type: 'get_lobby_members', code: lobbyId });
+    }
+  }, [wsStatus, lobbyId, sendMessage]);
 
+  useEffect(() => {
+    if (!lastMessage) return;
     try {
       const msg = JSON.parse(lastMessage);
-      // Handle messages that update lobby state (e.g., player joined, player ready, lobby created/joined)
-      if (msg.type === 'lobby_state_update') { // Assuming a message type for lobby state updates
-        setPlayers(msg.players);
-        setLobbyName(msg.lobbyName); // Update lobby name
-        setCurrentUserId(msg.currentUserId); // Set current user ID
+      if (msg.type === 'lobby_members' && msg.code === lobbyId) {
+        setPlayers(msg.members.map(p => ({
+          id: p.userId,
+          name: p.username || `Player ${p.userId.substring(0, 4)}`,
+          isReady: !!p.isReady
+        })));
+        // Set currentUserId if not already set and userId is present in the list
+        if (!currentUserId && msg.members.length > 0) {
+          // Try to find the userId from a unique identifier (e.g., from localStorage or a welcome message)
+          const storedId = localStorage.getItem('userId');
+          if (storedId && msg.members.some(m => m.userId === storedId)) {
+            setCurrentUserId(storedId);
+          }
+        }
+      }
+      // Also update players on lobby_state_update (for ready state changes)
+      if (msg.type === 'lobby_state_update') {
+        setPlayers(msg.players.map(p => ({
+          id: p.userId || p.id,
+          name: p.username || `Player ${(p.userId || p.id)?.substring(0, 4)}`,
+          isReady: !!p.isReady
+        })));
+        setLobbyName(msg.lobbyName);
+        setCurrentUserId(msg.currentUserId);
       } else if (msg.type === 'game_start_countdown') {
         setIsStarting(true);
         setCountdown(msg.countdown);
@@ -75,7 +109,7 @@ const WaitlistPage = () => {
   };
 
   const handleStart = () => {
-    if (isHost && allPlayersReady) {
+    if (allPlayersReady) {
       setIsStarting(true);
       setCountdown(3); // Set countdown to 3 seconds instead of 30
       // Ideally, send a 'start_game' message to the WebSocket here
@@ -89,29 +123,42 @@ const WaitlistPage = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-900 text-white">
-      <Header title={lobbyName} showBackButton={!isStarting} /> {/* Use lobbyName as title */}
+      <Header title={lobbyName} showBackButton={!isStarting} />
+
+      {/* LOBBY CODE AT TOP */}
+      <div className="mx-auto mt-4 w-full max-w-2xl text-center">
+        <div className="inline-block rounded bg-gray-800/80 px-4 py-2 text-lg font-mono font-semibold text-blue-300 shadow">
+          Lobby Code: <span className="text-white">{lobbyId?.toUpperCase()}</span>
+        </div>
+      </div>
 
       <main className="flex flex-grow flex-col justify-center p-4 md:p-6">
         <div className="mx-auto w-full max-w-2xl">
-          {isHost ? (
-            <HostWaitlistPage
-              lobbyId={lobbyId}
-              players={players}
-              allPlayersReady={allPlayersReady}
-              isStarting={isStarting}
-              countdown={countdown}
-              onStart={handleStart}
-              onCancel={handleCancel}
-            />
-          ) : (
+          {/* If the user is already loaded and we're not waiting for their player data */}
+          {currentUser && (
             <PlayerWaitlistPage
               players={players}
-              currentUser={currentUser} // Ensure currentUser is passed
+              currentUser={currentUser}
+              lobbyCode={lobbyId}
               isStarting={isStarting}
               countdown={countdown}
               onReadyToggle={handleReadyToggle}
               onNameChange={handleNameChange}
             />
+          )}
+
+          {/* If the user is not yet loaded or we're still waiting for player data */}
+          {!currentUser && !isStarting && (
+            <div className="text-center text-gray-400">
+              Loading player data...
+            </div>
+          )}
+
+          {/* COUNTDOWN IF STARTING */}
+          {isStarting && (
+            <div className="mb-6 text-center text-2xl font-bold text-blue-400">
+              Game starting in {countdown}...
+            </div>
           )}
         </div>
       </main>

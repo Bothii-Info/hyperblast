@@ -20,6 +20,7 @@ const JoinLobbyPage = () => {
     if (!lastMessage) return;
     try {
       const msg = JSON.parse(lastMessage);
+      console.log(msg);
       if (msg.type === 'lobby_joined') {
 
         // Use the code from the message, or fallback to the entered code
@@ -47,7 +48,8 @@ const JoinLobbyPage = () => {
     sendMessage({
       type: 'join_lobby',
       code: lobbyCode.trim().toUpperCase(),
-      username: username.trim() // Send username
+      username: username.trim(), // Send username
+      role: 'player' // Ensure role is set to player
     });
   };
 

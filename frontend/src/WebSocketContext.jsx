@@ -12,13 +12,27 @@ export function WebSocketProvider({ children }) {
   const [lastMessage, setLastMessage] = useState(null);
 
   useEffect(() => {
-    ws.current = new window.WebSocket('ws://localhost:8080');
+    // Set up WebSocket connection
+    // Using ws:// protocol for HTTP testing (non-secure)
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const wsHost = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host;
+    ws.current = new window.WebSocket(`${wsProtocol}${wsHost}`);
 
     ws.current.onopen = () => setWsStatus('open');
     ws.current.onclose = () => setWsStatus('closed');
     ws.current.onerror = () => setWsStatus('error');
     ws.current.onmessage = (event) => {
+      console.log('WS received:', event.data); // ADDED LOG
       setLastMessage(event.data);
+      // Store userId from welcome message
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'welcome' && msg.userId) {
+          localStorage.setItem('userId', msg.userId);
+        }
+      } catch (e) {
+        // Ignore parse errors for non-JSON messages
+      }
     };
 
     return () => {
