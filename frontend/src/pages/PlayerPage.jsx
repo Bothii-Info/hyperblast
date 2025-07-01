@@ -34,7 +34,7 @@ const PlayerPage = () => {
   const [gameTime, setGameTime] = useState(300); // 5 minutes in seconds
   const [showHitIndicator, setShowHitIndicator] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false); // New state for the menu
-  const [gameStarting, setGameStarting] = useState(true);
+  const [gameStarting, setGameStarting] = useState(false);
   const [startCountdown, setStartCountdown] = useState(3); // 3 seconds instead of 30
 
   // --- Game Start Countdown ---
@@ -391,10 +391,13 @@ const PlayerPage = () => {
   // --- Event Handlers ---
   const handlePlayerHit = (personId) => {
     setShowHitIndicator('hit');
-    if (ws.current && ws.current.readyState === 1) {
-      ws.current.send(JSON.stringify({ type: 'hit', points: 50 }));
-    }
-    setScore(s => s + 50);
+    setScore(s => {
+      const newScore = s + 50;
+      if (ws.current && ws.current.readyState === 1) {
+        ws.current.send(JSON.stringify({ type: 'score', score: newScore }));
+      }
+      return newScore;
+    });
   };
 
   // Detect hit when shooting
