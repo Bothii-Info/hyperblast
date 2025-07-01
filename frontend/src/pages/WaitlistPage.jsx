@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Button from '../components/Button';
 import { LogOut } from 'lucide-react';
 import { useWebSocket } from '../WebSocketContext'; // Import useWebSocket
+import PlayerWaitlistPage from './PlayerWaitlistPage'; // Import PlayerWaitlistPage
 
 /**
  * This component acts as a controller. It fetches shared data
@@ -22,12 +23,24 @@ const WaitlistPage = () => {
   const [countdown, setCountdown] = useState(30);
 
   // --- DERIVED STATE ---
-  const currentUser = useMemo(() => players.find(p => p.id === currentUserId), [players, currentUserId]);
-  const allPlayersReady = useMemo(() => players.every(p => p.isReady), [players]);
+  const currentUser = useMemo(() => {
+    if (!currentUserId || players.length === 0) return null;
+    const user = players.find(p => p.id === currentUserId);
+    return user || null;
+  }, [players, currentUserId]);
+  
+  const allPlayersReady = useMemo(() => players.length > 0 && players.every(p => p.isReady), [players]);
 
   // --- WEBSOCKET & COUNTDOWN LOGIC ---
   useEffect(() => {
     if (wsStatus === 'open' && lobbyId) {
+      // Try to get userId from localStorage
+      const storedId = localStorage.getItem('userId');
+      if (storedId) {
+        setCurrentUserId(storedId);
+      }
+      
+      // Request lobby members
       sendMessage({ type: 'get_lobby_members', code: lobbyId });
     }
   }, [wsStatus, lobbyId, sendMessage]);
@@ -115,48 +128,29 @@ const WaitlistPage = () => {
       {/* LOBBY CODE AT TOP */}
       <div className="mx-auto mt-4 w-full max-w-2xl text-center">
         <div className="inline-block rounded bg-gray-800/80 px-4 py-2 text-lg font-mono font-semibold text-blue-300 shadow">
-          Lobby Code: <span className="text-white">{lobbyId}</span>
+          Lobby Code: <span className="text-white">{lobbyId?.toUpperCase()}</span>
         </div>
       </div>
 
       <main className="flex flex-grow flex-col justify-center p-4 md:p-6">
         <div className="mx-auto w-full max-w-2xl">
-          {/* --- LOBBY USER LIST --- */}
-          <div className="mb-6 rounded-lg bg-gray-800/80 p-4 shadow">
-            <h2 className="mb-2 text-lg font-semibold text-blue-300">Players in Lobby</h2>
-            <ul className="space-y-1">
-              {players.map((p) => (
-                <li
-                  key={p.id}
-                  className={`flex items-center gap-2 rounded px-2 py-1 ${p.id === currentUserId ? 'font-bold text-green-300' : ''}`}
-                >
-                  <span>{p.name}</span>
-                  {/* Ready status icon */}
-                  {p.isReady ? (
-                    <span className="ml-2 text-green-400" title="Ready">&#10003;</span> // green check
-                  ) : (
-                    <span className="ml-2 text-red-400" title="Not Ready">&#10007;</span> // red x
-                  )}
-                  {p.id === currentUserId && !p.isReady && <span className="ml-2 text-xs text-gray-400">(You)</span>}
-                </li>
-              ))}
-            </ul>
-          </div>
-          {/* --- END LOBBY USER LIST --- */}
+          {/* If the user is already loaded and we're not waiting for their player data */}
+          {currentUser && (
+            <PlayerWaitlistPage
+              players={players}
+              currentUser={currentUser}
+              lobbyCode={lobbyId}
+              isStarting={isStarting}
+              countdown={countdown}
+              onReadyToggle={handleReadyToggle}
+              onNameChange={handleNameChange}
+            />
+          )}
 
-          {/* READY BUTTON FOR CURRENT USER */}
-          {!isStarting && currentUser && (
-            <div className="mb-6 flex justify-center">
-              <Button
-                onClick={() => {
-                  // Send ready/unready state to backend
-                  sendMessage({ type: 'set_ready', code: lobbyId, ready: !currentUser.isReady });
-                  // Do NOT optimistically update local state; wait for backend update
-                }}
-                className={`px-8 py-2 text-lg font-semibold transition-colors duration-150 ${currentUser.isReady ? 'bg-green-700/80 hover:bg-green-600/80' : 'bg-green-800/80 hover:bg-green-700/80'}`}
-              >
-                {currentUser.isReady ? 'Unready' : 'Ready'}
-              </Button>
+          {/* If the user is not yet loaded or we're still waiting for player data */}
+          {!currentUser && !isStarting && (
+            <div className="text-center text-gray-400">
+              Loading player data...
             </div>
           )}
 

@@ -7,7 +7,7 @@ import { useWebSocket } from '../WebSocketContext';
 /**
  * The waitlist view specifically for a non-host player.
  */
-const PlayerWaitlistPage = ({ players, currentUser, isStarting, countdown, onReadyToggle, onNameChange }) => {
+const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInputValue, setNameInputValue] = useState('');
   const { sendMessage, lastMessage, wsStatus } = useWebSocket();
@@ -29,6 +29,20 @@ const PlayerWaitlistPage = ({ players, currentUser, isStarting, countdown, onRea
     if (nameInputValue.trim() !== '') {
       onNameChange(nameInputValue.trim());
       setIsEditingName(false);
+    }
+  };
+  
+  // Function to handle ready toggle with WebSocket
+  const handleReadyToggle = () => {
+    if (currentUser && lobbyCode) {
+      sendMessage({ 
+        type: 'set_ready', 
+        code: lobbyCode,
+        ready: !currentUser.isReady 
+      });
+    } else {
+      // Fall back to the passed onReadyToggle if no WebSocket or missing data
+      onReadyToggle();
     }
   };
 
@@ -95,7 +109,7 @@ const PlayerWaitlistPage = ({ players, currentUser, isStarting, countdown, onRea
           </>
         ) : (
           <>
-            <Button onClick={onReadyToggle} disabled={isEditingName} className={`flex items-center justify-center gap-2 ${currentUser?.isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}`}>
+            <Button onClick={handleReadyToggle} disabled={isEditingName} className={`flex items-center justify-center gap-2 ${currentUser?.isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}`}>
               {currentUser?.isReady ? <XCircle size={20} /> : <CheckCircle2 size={20} />}
               <span>{currentUser?.isReady ? 'Set to Not Ready' : 'Ready Up'}</span>
             </Button>

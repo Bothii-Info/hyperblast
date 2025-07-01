@@ -71,30 +71,63 @@ function createLobby(hostUserId, maxPlayers = 8, name = "Lobby") {
         code,
         host: hostUserId,
         players: [hostUserId],
-        maxPlayers,
+        maxPlayers: Math.min(Math.max(maxPlayers, 2), 8), // Ensure maxPlayers is between 2 and 8
         name,
         createdAt: Date.now()
     };
     players[hostUserId].lobbyCode = code;
+    players[hostUserId].isHost = true; // Mark player as host
+    players[hostUserId].ready = false; // Initialize ready state
     console.log(`Lobby created: code=${code}, host=${hostUserId}, maxPlayers=${maxPlayers}, name=${name}`);
     return code;
 }
 
 function joinLobby(userId, code) {
+    // Convert code to uppercase for case-insensitive matching
+    code = code.toUpperCase();
+    
     if (lobbies[code] && lobbies[code].players.length < lobbies[code].maxPlayers) {
+        // Check if player is already in the lobby
+        if (lobbies[code].players.includes(userId)) {
+            console.log(`User ${userId} is already in lobby ${code}`);
+            return true; // Return true as they're already in the lobby
+        }
+        
         lobbies[code].players.push(userId);
         players[userId].lobbyCode = code;
+        players[userId].isHost = false; // Not the host
+        players[userId].ready = false; // Initialize ready state
+        
         // Print to console
         console.log(`User ${userId} joined lobby ${code}`);
-        // Broadcast updated lobby members
-        const memberList = lobbies[code].players.map(uid => ({
-            userId: uid,
-            username: players[uid]?.username || null
-        }));
-        broadcast("lobby_members", { code, members: memberList });
+        
+        // Broadcast updated lobby members to all clients in the same lobby
+        broadcastToLobby(code, "lobby_members", { 
+            code, 
+            members: lobbies[code].players.map(uid => ({
+                userId: uid,
+                username: players[uid]?.username || null,
+                isHost: lobbies[code].host === uid,
+                isReady: players[uid]?.ready || false
+            }))
+        });
+        
         return true;
     }
     return false;
+}
+
+// Helper function to broadcast to all users in a specific lobby
+function broadcastToLobby(lobbyCode, type, payload) {
+    if (!lobbies[lobbyCode]) return;
+    
+    const message = JSON.stringify({ type, ...payload });
+    lobbies[lobbyCode].players.forEach(userId => {
+        const player = players[userId];
+        if (player && player.ws && player.ws.readyState === WebSocket.OPEN) {
+            player.ws.send(message);
+        }
+    });
 }
 
 function showLobbies() {
@@ -151,12 +184,34 @@ wss.on('connection', function connection(ws) {
                 break;
             }
             case 'join_lobby': {
-                const { code } = data;
+                if (typeof data.username === 'string' && data.username.trim()) {
+                    player.username = data.username.trim();
+                }
+                
+                const code = data.code.toUpperCase();
+                
+                if (!lobbies[code]) {
+                    ws.send(JSON.stringify({ type: 'lobby_error', message: 'Lobby not found' }));
+                    break;
+                }
+                
+                if (lobbies[code].players.length >= lobbies[code].maxPlayers) {
+                    ws.send(JSON.stringify({ type: 'lobby_error', message: 'Lobby is full' }));
+                    break;
+                }
+                
                 if (joinLobby(userId, code)) {
-                    ws.send(JSON.stringify({ type: 'lobby_joined', code }));
+                    ws.send(JSON.stringify({ 
+                        type: 'lobby_joined', 
+                        code,
+                        lobbyName: lobbies[code].name,
+                        isHost: lobbies[code].host === userId
+                    }));
+                    
+                    // Send the updated lobby list to everyone
                     showLobbies();
                 } else {
-                    ws.send(JSON.stringify({ type: 'lobby_error', message: 'Lobby not found or full' }));
+                    ws.send(JSON.stringify({ type: 'lobby_error', message: 'Could not join lobby' }));
                 }
                 break;
             }
@@ -209,22 +264,41 @@ wss.on('connection', function connection(ws) {
             }
 
             case 'set_ready': {
-                // New: handle ready/unready toggle from frontend
-                if (player.role === 'player' && typeof data.ready === 'boolean') {
+                // Handle ready/unready toggle from frontend
+                if (typeof data.ready === 'boolean') {
                     player.ready = data.ready;
                     console.log(`${player.username || userId} set ready: ${data.ready}`);
+                    
                     // Broadcast updated lobby members to all clients in the same lobby
-                    const code = player.lobbyCode;
+                    const code = data.code || player.lobbyCode;
                     if (code && lobbies[code]) {
                         const memberList = lobbies[code].players.map(uid => ({
                             userId: uid,
                             username: players[uid]?.username || null,
+                            isHost: lobbies[code].host === uid,
                             isReady: players[uid]?.ready || false
                         }));
-                        broadcast("lobby_members", { code, members: memberList });
+                        broadcastToLobby(code, "lobby_members", { code, members: memberList });
+                        
+                        // Check if all players are ready and we have at least 2 players
+                        const allReady = lobbies[code].players.every(uid => players[uid]?.ready);
+                        const enoughPlayers = lobbies[code].players.length >= 2;
+                        
+                        if (allReady && enoughPlayers && !gameStarted) {
+                            // Start countdown for game start
+                            console.log(`All players ready in lobby ${code}, starting countdown`);
+                            broadcastToLobby(code, "game_start_countdown", { countdown: 3 });
+                            
+                            // After 3 seconds, start the game
+                            setTimeout(() => {
+                                if (lobbies[code]) {
+                                    gameStarted = true;
+                                    broadcastToLobby(code, "game_started", { code });
+                                    console.log(`Game started in lobby ${code}`);
+                                }
+                            }, 3000);
+                        }
                     }
-                    updateLobbyStatus();
-                    tryStartGame();
                 }
                 break;
             }

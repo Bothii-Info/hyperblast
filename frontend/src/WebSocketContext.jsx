@@ -12,7 +12,11 @@ export function WebSocketProvider({ children }) {
   const [lastMessage, setLastMessage] = useState(null);
 
   useEffect(() => {
-    ws.current = new window.WebSocket('ws://localhost:8080');
+    // Set up WebSocket connection
+    // Using ws:// protocol for HTTP testing (non-secure)
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const wsHost = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host;
+    ws.current = new window.WebSocket(`${wsProtocol}${wsHost}`);
 
     ws.current.onopen = () => setWsStatus('open');
     ws.current.onclose = () => setWsStatus('closed');
