@@ -23,6 +23,11 @@ const PlayerPage = () => {
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [detectedPeople, setDetectedPeople] = useState([]);
 
+  // Add MediaPipe Selfie Segmentation integration
+  const selfieSegmentationRef = useRef(null);
+  const [isSegmentationLoaded, setIsSegmentationLoaded] = useState(false);
+  const [segmentationMask, setSegmentationMask] = useState(null);
+
   // --- Game State ---
   const [health, setHealth] = useState(100);
   const [score, setScore] = useState(0);
@@ -267,28 +272,121 @@ const PlayerPage = () => {
     };
   }, [isModelLoaded, detectPeople]);
 
-  // Optional: Draw bounding boxes on a canvas overlay
+  // Load MediaPipe Selfie Segmentation
+  useEffect(() => {
+    const loadSegmentation = async () => {
+      if (!window.SelfieSegmentation) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
+        script.async = true;
+        document.body.appendChild(script);
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+        });
+      }
+      if (window.SelfieSegmentation) {
+        try {
+          selfieSegmentationRef.current = new window.SelfieSegmentation({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`
+          });
+          selfieSegmentationRef.current.setOptions({
+            modelSelection: 1,
+            selfieMode: false // CHANGED: match camera, not mirrored
+          });
+          selfieSegmentationRef.current.onResults((results) => {
+            setSegmentationMask(results.segmentationMask);
+          });
+          setIsSegmentationLoaded(true);
+        } catch (err) {
+          // eslint-disable-next-line no-alert
+          alert('Failed to initialize MediaPipe SelfieSegmentation. Please check the library version and usage.');
+        }
+      } else {
+        // eslint-disable-next-line no-alert
+        alert('MediaPipe SelfieSegmentation library failed to load.');
+      }
+    };
+    loadSegmentation();
+  }, []);
+
+  // Run segmentation on each frame
+  useEffect(() => {
+    let animationId;
+    const runSegmentation = async () => {
+      if (isSegmentationLoaded && videoRef.current && selfieSegmentationRef.current) {
+        await selfieSegmentationRef.current.send({ image: videoRef.current });
+      }
+      animationId = requestAnimationFrame(runSegmentation);
+    };
+    if (isSegmentationLoaded) {
+      runSegmentation();
+    }
+    return () => cancelAnimationFrame(animationId);
+  }, [isSegmentationLoaded]);
+
+  // Draw segmentation mask (outline) on canvas
   useEffect(() => {
     if (canvasRef.current && videoRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       const video = videoRef.current;
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
+      // Use the smallest aspect ratio to fit both video and mask
+      const videoAspect = video.videoWidth / video.videoHeight;
+      const canvasAspect = canvas.width / canvas.height;
+      let drawWidth = canvas.width;
+      let drawHeight = canvas.height;
+      let offsetX = 0;
+      let offsetY = 0;
+      if (videoAspect > canvasAspect) {
+        // Video is wider than canvas
+        drawWidth = canvas.height * videoAspect;
+        drawHeight = canvas.height;
+        offsetX = (canvas.width - drawWidth) / 2;
+      } else if (videoAspect < canvasAspect) {
+        // Video is taller than canvas
+        drawWidth = canvas.width;
+        drawHeight = canvas.width / videoAspect;
+        offsetY = (canvas.height - drawHeight) / 2;
+      }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      detectedPeople.forEach(person => {
-        const [x, y, width, height] = person.bbox;
-        ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x, y, width, height);
-        ctx.fillStyle = '#00ff00';
-        ctx.font = '16px Arial';
-        ctx.fillRect(x, y - 25, 80, 25);
-        ctx.fillStyle = '#000000';
-        ctx.fillText(`Person ${person.id}`, x + 5, y - 8);
-      });
+      if (segmentationMask) {
+        ctx.save();
+        ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.drawImage(segmentationMask, offsetX, offsetY, drawWidth, drawHeight);
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = 'rgba(0,255,0,0.4)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+        if (detectedPeople && detectedPeople.length > 0) {
+          detectedPeople.forEach(person => {
+            // Adjust label position for scaling/offset
+            const [x, y, width, height] = person.bbox;
+            const labelX = offsetX + (x + width / 2) * (drawWidth / video.videoWidth);
+            const labelY = offsetY + y * (drawHeight / video.videoHeight) - 10;
+            ctx.fillStyle = '#00ff00';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Person ${person.id}`, labelX, labelY);
+          });
+        }
+      } else if (detectedPeople && detectedPeople.length > 0) {
+        // fallback: draw bounding boxes ONLY if no mask
+        detectedPeople.forEach(person => {
+          const [x, y, width, height] = person.bbox;
+          ctx.strokeStyle = '#00ff00';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(x, y, width, height);
+          ctx.fillStyle = '#00ff00';
+          ctx.font = '16px Arial';
+          ctx.fillRect(x, y - 25, 80, 25);
+          ctx.fillStyle = '#000000';
+          ctx.fillText(`Person ${person.id}`, x + 5, y - 8);
+        });
+      }
     }
-  }, [detectedPeople]);
+  }, [detectedPeople, segmentationMask]);
 
   // --- Event Handlers ---
   const handlePlayerHit = (personId) => {
@@ -302,9 +400,43 @@ const PlayerPage = () => {
   // Detect hit when shooting
   const handleShoot = () => {
     if (health <= 0 || isMenuOpen) return;
-    // Check if a person is at the center of the video
     let hit = false;
-    if (detectedPeople.length > 0) {
+    if (segmentationMask && detectedPeople.length > 0 && videoRef.current && canvasRef.current) {
+      const videoWidth = videoRef.current.videoWidth;
+      const videoHeight = videoRef.current.videoHeight;
+      const centerX = Math.floor(videoWidth / 2);
+      const centerY = Math.floor(videoHeight / 2);
+      // Get segmentation mask pixel data
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = videoWidth;
+      tempCanvas.height = videoHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(segmentationMask, 0, 0, videoWidth, videoHeight);
+      const maskData = tempCtx.getImageData(centerX, centerY, 1, 1).data;
+      // MediaPipe mask: person pixels are white (255,255,255,255), background is black (0,0,0,255)
+      // Some masks may use alpha for confidence, so check alpha > 128 and at least one channel > 128
+      if (maskData[3] > 128 && (maskData[0] > 128 || maskData[1] > 128 || maskData[2] > 128)) {
+        // Center is on a person in the segmentation mask
+        // Find the closest detected person to the center
+        let minDist = Infinity;
+        let hitPerson = null;
+        detectedPeople.forEach(person => {
+          const [x, y, width, height] = person.bbox;
+          const px = x + width / 2;
+          const py = y + height / 2;
+          const dist = Math.sqrt(Math.pow(centerX - px, 2) + Math.pow(centerY - py, 2));
+          if (dist < minDist) {
+            minDist = dist;
+            hitPerson = person;
+          }
+        });
+        if (hitPerson) {
+          handlePlayerHit(hitPerson.id);
+          hit = true;
+        }
+      }
+    } else if (detectedPeople.length > 0 && videoRef.current) {
+      // fallback: old logic if no segmentation
       const videoWidth = videoRef.current.videoWidth;
       const videoHeight = videoRef.current.videoHeight;
       const centerX = videoWidth / 2;
@@ -383,14 +515,14 @@ const PlayerPage = () => {
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-2 rounded-lg bg-black/50 p-2 backdrop-blur-sm"><Timer size={20} /><span className="text-xl font-bold">{formatTime(gameTime)}</span></div>
           <div className="flex items-center gap-4">
-            {/* Health bar moved to top right, left of score */}
-            <div className="max-w-xs"><HealthBar health={health} /></div>
+            {/* Health bar moved to top right, left of score 
+            <div className="max-w-xs"><HealthBar health={health} /></div>*/}
             <div className="flex flex-col items-end rounded-lg bg-black/50 p-2 text-right backdrop-blur-sm"><span className="text-xs font-bold uppercase">Score</span><span className="text-2xl font-black">{score}</span></div>
+            
           </div>
           <button onClick={() => setIsMenuOpen(true)} className="rounded-lg bg-black/50 p-2 backdrop-blur-sm"><Menu size={24} /></button>
         </div>
         <div className="flex flex-col items-center gap-3">
-          {/* Removed health bar from here */}
           <button onClick={handleShoot} disabled={health <= 0 || isMenuOpen || gameStarting} className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white/50 bg-red-600/80 text-white transition-transform active:scale-90 disabled:cursor-not-allowed disabled:bg-gray-700/80"><Crosshair size={48} /></button>
         </div>
       </div>
