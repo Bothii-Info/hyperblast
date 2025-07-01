@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Import useEffect
 import { Crown, CheckCircle2, XCircle, Pencil } from 'lucide-react';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -8,11 +8,21 @@ import Input from '../components/Input';
  */
 const PlayerWaitlistPage = ({ players, currentUser, isStarting, countdown, onReadyToggle, onNameChange }) => {
   const [isEditingName, setIsEditingName] = useState(false);
-  const [nameInputValue, setNameInputValue] = useState(currentUser.name);
+  // Initialize nameInputValue based on currentUser.name, but only if currentUser exists
+  const [nameInputValue, setNameInputValue] = useState('');
+
+  // Use useEffect to update nameInputValue when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      setNameInputValue(currentUser.name);
+    }
+  }, [currentUser]);
 
   const handleEditName = () => {
-    setNameInputValue(currentUser.name);
-    setIsEditingName(true);
+    if (currentUser) { // Ensure currentUser exists before setting input value
+      setNameInputValue(currentUser.name);
+      setIsEditingName(true);
+    }
   };
 
   const handleSaveName = () => {
@@ -21,6 +31,14 @@ const PlayerWaitlistPage = ({ players, currentUser, isStarting, countdown, onRea
       setIsEditingName(false);
     }
   };
+
+  if (!currentUser && !isStarting) { // Added a check for currentUser to prevent rendering issues before data loads
+    return (
+      <div className="text-center text-gray-400">
+        Loading player data...
+      </div>
+    );
+  }
 
   if (isStarting) {
     return (
