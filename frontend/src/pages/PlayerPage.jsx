@@ -1,18 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import HealthBar from '../components/HealthBar';
-import Button from '../components/Button'; // We'll need the Button component for the menu
+import Button from '../components/Button';
 import { Zap, Crosshair, Timer, Menu, LogOut, Skull } from 'lucide-react';
 
-/**
- * The redesigned main game view for the player.
- * Features a new HUD layout, a game menu with quit/suicide options, and hit indicator.
- */
 const PlayerPage = () => {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const videoRef = useRef(null);
-  const canvasRef = useRef(null); // For optional bounding box overlay
+  const canvasRef = useRef(null);
   const ws = useRef(null);
   const resizeObserverRef = useRef(null);
 
@@ -32,11 +28,46 @@ const PlayerPage = () => {
   // --- Game State ---
   const [health, setHealth] = useState(100);
   const [score, setScore] = useState(0);
-  const [gameTime, setGameTime] = useState(300); // 5 minutes in seconds
+  const [gameTime, setGameTime] = useState(300);
   const [showHitIndicator, setShowHitIndicator] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // New state for the menu
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [gameStarting, setGameStarting] = useState(false);
-  const [startCountdown, setStartCountdown] = useState(3); // 3 seconds instead of 30
+  const [startCountdown, setStartCountdown] = useState(3);
+
+  // --- Sound Effects ---
+  const hitSoundRef = useRef(null);
+  const missSoundRef = useRef(null);
+
+  // Initialize sounds
+  useEffect(() => {
+    hitSoundRef.current = new Audio('/sounds/laser-hit.mp3');
+    missSoundRef.current = new Audio('/sounds/laser-miss.mp3');
+    
+    // Set volume to 70%
+    hitSoundRef.current.volume = 0.7;
+    missSoundRef.current.volume = 0.7;
+    
+    // Preload sounds
+    hitSoundRef.current.preload = 'auto';
+    missSoundRef.current.preload = 'auto';
+    
+    return () => {
+      // Cleanup sounds
+      hitSoundRef.current = null;
+      missSoundRef.current = null;
+    };
+  }, []);
+
+  // Play sound helper
+  const playSound = (soundRef) => {
+    if (!soundRef.current) return;
+    try {
+      soundRef.current.currentTime = 0; // Rewind to start
+      soundRef.current.play();
+    } catch (e) {
+      console.log("Sound play error:", e);
+    }
+  };
 
   // --- Game Start Countdown ---
   useEffect(() => {
@@ -52,7 +83,6 @@ const PlayerPage = () => {
 
   // --- Game Timer & WebSocket Logic ---
   useEffect(() => {
-    // We only run the timer if the menu is closed
     let timerInterval;
     if (!isMenuOpen) {
       timerInterval = setInterval(() => {
@@ -67,14 +97,11 @@ const PlayerPage = () => {
       }, 1000);
     }
     return () => clearInterval(timerInterval);
-  }, [gameId, navigate, isMenuOpen]); // Re-run effect when menu opens/closes
+  }, [gameId, navigate, isMenuOpen]);
 
   useEffect(() => {
-    // WebSocket setup (runs once)
     ws.current = new WebSocket('ws://localhost:8080');
-    ws.current.onopen = () => {
-      // Optionally send join event
-    };
+    ws.current.onopen = () => {};
     ws.current.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -93,7 +120,7 @@ const PlayerPage = () => {
     return () => {
       if (ws.current) ws.current.close();
     };
-  }, []); // Empty array ensures this runs only once
+  }, []);
 
   // Load TensorFlow.js and COCO-SSD model
   useEffect(() => {
@@ -293,18 +320,16 @@ const PlayerPage = () => {
           });
           selfieSegmentationRef.current.setOptions({
             modelSelection: 1,
-            selfieMode: false // CHANGED: match camera, not mirrored
+            selfieMode: false
           });
           selfieSegmentationRef.current.onResults((results) => {
             setSegmentationMask(results.segmentationMask);
           });
           setIsSegmentationLoaded(true);
         } catch (err) {
-          // eslint-disable-next-line no-alert
-          alert('Failed to initialize MediaPipe SelfieSegmentation. Please check the library version and usage.');
+          alert('Failed to initialize MediaPipe SelfieSegmentation.');
         }
       } else {
-        // eslint-disable-next-line no-alert
         alert('MediaPipe SelfieSegmentation library failed to load.');
       }
     };
@@ -339,10 +364,8 @@ const PlayerPage = () => {
         const canvas = canvasRef.current;
         const video = videoRef.current;
         
-        // Get the actual displayed size of the video element
         const rect = video.getBoundingClientRect();
         
-        // Set canvas to match the video's display size exactly
         canvas.width = rect.width;
         canvas.height = rect.height;
         canvas.style.width = `${rect.width}px`;
@@ -350,10 +373,8 @@ const PlayerPage = () => {
       }
     };
 
-    // Initial setup
     setupCanvasSize();
 
-    // Setup ResizeObserver to handle window resizing
     if (window.ResizeObserver) {
       resizeObserverRef.current = new ResizeObserver(() => {
         setupCanvasSize();
@@ -364,7 +385,6 @@ const PlayerPage = () => {
       }
     }
 
-    // Fallback for older browsers
     const handleResize = () => setupCanvasSize();
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
@@ -385,24 +405,19 @@ const PlayerPage = () => {
       const ctx = canvas.getContext('2d');
       const video = videoRef.current;
       
-      // Get video element's display dimensions
       const videoRect = video.getBoundingClientRect();
       
-      // Calculate how the video is actually displayed with object-cover
       const videoAspect = video.videoWidth / video.videoHeight;
       const displayAspect = videoRect.width / videoRect.height;
       
       let sourceX = 0, sourceY = 0, sourceWidth = video.videoWidth, sourceHeight = video.videoHeight;
       let destX = 0, destY = 0, destWidth = canvas.width, destHeight = canvas.height;
       
-      // Handle object-cover cropping behavior
       if (displayAspect > videoAspect) {
-        // Display is wider than video - crop top/bottom of video
         const newHeight = video.videoWidth / displayAspect;
         sourceY = (video.videoHeight - newHeight) / 2;
         sourceHeight = newHeight;
       } else {
-        // Display is taller than video - crop left/right of video  
         const newWidth = video.videoHeight * displayAspect;
         sourceX = (video.videoWidth - newWidth) / 2;
         sourceWidth = newWidth;
@@ -413,49 +428,41 @@ const PlayerPage = () => {
       if (segmentationMask) {
         ctx.save();
         
-        // Create properly sized temporary canvas for the mask
         const tempCanvas = document.createElement('canvas');
         const tempCtx = tempCanvas.getContext('2d');
         tempCanvas.width = canvas.width;
         tempCanvas.height = canvas.height;
         
-        // Draw cropped segmentation mask to match video display
         tempCtx.drawImage(
           segmentationMask,
-          sourceX, sourceY, sourceWidth, sourceHeight,  // Source crop area
-          0, 0, canvas.width, canvas.height  // Destination full canvas
+          sourceX, sourceY, sourceWidth, sourceHeight,
+          0, 0, canvas.width, canvas.height
         );
         
-        // Draw cropped video frame
         ctx.drawImage(
           video,
-          sourceX, sourceY, sourceWidth, sourceHeight,  // Source crop area  
-          destX, destY, destWidth, destHeight  // Destination full canvas
+          sourceX, sourceY, sourceWidth, sourceHeight,
+          destX, destY, destWidth, destHeight
         );
         
-        // Apply mask
         ctx.globalCompositeOperation = 'destination-in';
         ctx.drawImage(tempCanvas, 0, 0);
         
-        // Add green overlay
         ctx.globalCompositeOperation = 'source-atop';
         ctx.fillStyle = 'rgba(0,255,0,0.4)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         ctx.restore();
         
-        // Draw person labels with proper coordinate transformation
         if (detectedPeople && detectedPeople.length > 0) {
           detectedPeople.forEach(person => {
             const [x, y, width, height] = person.bbox;
             
-            // Transform bounding box coordinates to match the cropped/scaled display
             const scaleX = canvas.width / sourceWidth;
             const scaleY = canvas.height / sourceHeight;
             const labelX = (x - sourceX) * scaleX + width * scaleX / 2;
             const labelY = (y - sourceY) * scaleY - 10;
             
-            // Only draw labels for people visible in the cropped area
             if (labelX >= 0 && labelX <= canvas.width && labelY >= -30 && labelY <= canvas.height) {
               ctx.fillStyle = '#00ff00';
               ctx.font = '20px Arial';
@@ -465,11 +472,9 @@ const PlayerPage = () => {
           });
         }
       } else if (detectedPeople && detectedPeople.length > 0) {
-        // Fallback: draw properly scaled bounding boxes
         detectedPeople.forEach(person => {
           const [x, y, width, height] = person.bbox;
           
-          // Transform coordinates to match cropped display
           const scaleX = canvas.width / sourceWidth;
           const scaleY = canvas.height / sourceHeight;
           
@@ -478,7 +483,6 @@ const PlayerPage = () => {
           const scaledWidth = width * scaleX;
           const scaledHeight = height * scaleY;
           
-          // Only draw boxes for people visible in the cropped area
           if (scaledX + scaledWidth >= 0 && scaledX <= canvas.width && 
               scaledY + scaledHeight >= 0 && scaledY <= canvas.height) {
             
@@ -518,10 +522,8 @@ const PlayerPage = () => {
       const canvas = canvasRef.current;
       const videoRect = video.getBoundingClientRect();
       const canvasRect = canvas.getBoundingClientRect();
-      // Calculate the center of the canvas (crosshair position in display coordinates)
       const displayCenterX = canvasRect.left + canvasRect.width / 2;
       const displayCenterY = canvasRect.top + canvasRect.height / 2;
-      // Map display center to video coordinates, considering cropping/scaling
       const videoAspect = video.videoWidth / video.videoHeight;
       const displayAspect = canvasRect.width / canvasRect.height;
       let sourceX = 0, sourceY = 0, sourceWidth = video.videoWidth, sourceHeight = video.videoHeight;
@@ -534,22 +536,17 @@ const PlayerPage = () => {
         sourceX = (video.videoWidth - newWidth) / 2;
         sourceWidth = newWidth;
       }
-      // Calculate the relative position of the crosshair in the canvas
       const relX = (displayCenterX - canvasRect.left) / canvasRect.width;
       const relY = (displayCenterY - canvasRect.top) / canvasRect.height;
-      // Map to video coordinates (cropped area)
       const videoX = sourceX + relX * sourceWidth;
       const videoY = sourceY + relY * sourceHeight;
-      // Get segmentation mask pixel data at mapped point
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = video.videoWidth;
       tempCanvas.height = video.videoHeight;
       const tempCtx = tempCanvas.getContext('2d');
       tempCtx.drawImage(segmentationMask, 0, 0, video.videoWidth, video.videoHeight);
       const maskData = tempCtx.getImageData(Math.floor(videoX), Math.floor(videoY), 1, 1).data;
-      // Check if mapped point is on a person in the segmentation mask
       if (maskData[3] > 128 && (maskData[0] > 128 || maskData[1] > 128 || maskData[2] > 128)) {
-        // Find the closest detected person to the mapped point
         let minDist = Infinity;
         let hitPerson = null;
         detectedPeople.forEach(person => {
@@ -563,12 +560,12 @@ const PlayerPage = () => {
           }
         });
         if (hitPerson) {
+          playSound(hitSoundRef);
           handlePlayerHit(hitPerson.id);
           hit = true;
         }
       }
     } else if (detectedPeople.length > 0 && videoRef.current) {
-      // Fallback: old logic if no segmentation
       const video = videoRef.current;
       const videoRect = video.getBoundingClientRect();
       const videoAspect = video.videoWidth / video.videoHeight;
@@ -590,11 +587,13 @@ const PlayerPage = () => {
         return centerX >= x && centerX <= (x + width) && centerY >= y && centerY <= (y + height);
       });
       if (hitPerson) {
+        playSound(hitSoundRef);
         handlePlayerHit(hitPerson.id);
         hit = true;
       }
     }
     if (!hit) {
+      playSound(missSoundRef);
       setShowHitIndicator('miss');
     }
     if (ws.current && ws.current.readyState === 1) {
@@ -618,7 +617,12 @@ const PlayerPage = () => {
       return () => clearTimeout(t);
     }
   }, [showHitIndicator]);
-  useEffect(() => { if (health <= 0) { setTimeout(() => navigate(`/game/${gameId}/end`), 1500); } }, [health, gameId, navigate]);
+  
+  useEffect(() => { 
+    if (health <= 0) { 
+      setTimeout(() => navigate(`/game/${gameId}/end`), 1500); 
+    } 
+  }, [health, gameId, navigate]);
 
   const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
@@ -668,10 +672,7 @@ const PlayerPage = () => {
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-2 rounded-lg bg-black/50 p-2 backdrop-blur-sm"><Timer size={20} /><span className="text-xl font-bold">{formatTime(gameTime)}</span></div>
           <div className="flex items-center gap-4">
-            {/* Health bar moved to top right, left of score 
-            <div className="max-w-xs"><HealthBar health={health} /></div>*/}
             <div className="flex flex-col items-end rounded-lg bg-black/50 p-2 text-right backdrop-blur-sm"><span className="text-xs font-bold uppercase">Score</span><span className="text-2xl font-black">{score}</span></div>
-            
           </div>
           <button onClick={() => setIsMenuOpen(true)} className="rounded-lg bg-black/50 p-2 backdrop-blur-sm"><Menu size={24} /></button>
         </div>
