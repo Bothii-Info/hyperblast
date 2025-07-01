@@ -20,6 +20,7 @@ const JoinLobbyPage = () => {
     if (!lastMessage) return;
     try {
       const msg = JSON.parse(lastMessage);
+      console.log(msg);
       if (msg.type === 'lobby_joined') {
 
         // Use the code from the message, or fallback to the entered code

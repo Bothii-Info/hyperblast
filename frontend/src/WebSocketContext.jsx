@@ -22,6 +22,7 @@ export function WebSocketProvider({ children }) {
     ws.current.onclose = () => setWsStatus('closed');
     ws.current.onerror = () => setWsStatus('error');
     ws.current.onmessage = (event) => {
+      console.log('WS received:', event.data); // ADDED LOG
       setLastMessage(event.data);
       // Store userId from welcome message
       try {
