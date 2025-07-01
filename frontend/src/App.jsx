@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { WebSocketProvider } from './WebSocketContext';
 
 // Import the pages we have already created
 import LandingPage from './pages/LandingPage';
@@ -20,23 +21,25 @@ import EndGamePage from './pages/EndGamePage';
  */
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* --- Core Route --- */}
-        <Route path="/" element={<LandingPage />} />
+    <WebSocketProvider>
+      <Router>
+        <Routes>
+          {/* --- Core Route --- */}
+          <Route path="/" element={<LandingPage />} />
 
-        {/* --- Spectator Routes --- */}
-        <Route path="/spectate" element={<SpectatorLobbyListPage />} />
-        <Route path="/spectate/:lobbyId" element={<SpectateGamePage />} />
-        <Route path="/lobby" element={<LobbyPage />} /> 
-        <Route path="/lobby/create" element={<CreateLobbyPage />} /> 
-        <Route path="/lobby/join" element={<JoinLobbyPage />} />
-       <Route path="/lobby/:lobbyId/waitlist" element={<WaitlistPage />} /> 
-        <Route path="/game/:gameId" element={<PlayerPage />} />
-        <Route path="/game/:gameId/end" element={<EndGamePage />} />
+          {/* --- Spectator Routes --- */}
+          <Route path="/spectate" element={<SpectatorLobbyListPage />} />
+          <Route path="/spectate/:lobbyId" element={<SpectateGamePage />} />
+          <Route path="/lobby" element={<LobbyPage />} /> 
+          <Route path="/lobby/create" element={<CreateLobbyPage />} /> 
+          <Route path="/lobby/join" element={<JoinLobbyPage />} />
+          <Route path="/lobby/:lobbyId/waitlist" element={<WaitlistPage />} /> 
+          <Route path="/game/:gameId" element={<PlayerPage />} />
+          <Route path="/game/:gameId/end" element={<EndGamePage />} />
 
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </WebSocketProvider>
   );
 }
 
