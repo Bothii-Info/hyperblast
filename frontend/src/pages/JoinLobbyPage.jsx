@@ -18,17 +18,20 @@ const JoinLobbyPage = () => {
 
   React.useEffect(() => {
     if (!lastMessage) return;
+    let msg;
     try {
-      const msg = JSON.parse(lastMessage);
-      if (msg.type === 'lobby_joined') {
-
-        // Use the code from the message, or fallback to the entered code
-        const code = msg.code || lobbyCode.trim().toUpperCase();
+      msg = JSON.parse(lastMessage);
+    } catch (e) { return; }
+    if (msg.type === 'lobby_joined') {
+      // Use the code from the message, or fallback to the entered code
+      const code = msg.code || lobbyCode.trim().toUpperCase();
+      // Add a small delay to ensure backend state is ready before navigation
+      setTimeout(() => {
         navigate(`/lobby/${code}/waitlist`);
-      } else if (msg.type === 'lobby_error') {
-        alert(msg.message || 'Failed to join lobby.');
-      }
-    } catch (e) {}
+      }, 100);
+    } else if (msg.type === 'lobby_error') {
+      alert(msg.message || 'Failed to join lobby.');
+    }
   }, [lastMessage, navigate, lobbyCode]);
 
   const handleJoinByCode = () => {

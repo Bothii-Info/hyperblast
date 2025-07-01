@@ -145,15 +145,26 @@ wss.on('connection', function connection(ws) {
                 if (typeof data.username === 'string' && data.username.trim()) {
                     player.username = data.username.trim();
                 }
+                player.role = 'player'; // Ensure role is set to player
                 const code = createLobby(userId, maxPlayers, name);
                 ws.send(JSON.stringify({ type: 'lobby_created', code, maxPlayers, name }));
                 showLobbies();
                 break;
             }
             case 'join_lobby': {
-                const { code } = data;
+                const { code, role } = data;
+                if (role === 'player') {
+                    player.role = 'player';
+                }
                 if (joinLobby(userId, code)) {
                     ws.send(JSON.stringify({ type: 'lobby_joined', code }));
+                    // Broadcast updated lobby members to all clients in the same lobby (for immediate frontend update)
+                    const memberList = lobbies[code].players.map(uid => ({
+                        userId: uid,
+                        username: players[uid]?.username || null,
+                        isReady: players[uid]?.ready || false
+                    }));
+                    broadcast("lobby_members", { code, members: memberList });
                     showLobbies();
                 } else {
                     ws.send(JSON.stringify({ type: 'lobby_error', message: 'Lobby not found or full' }));
@@ -210,6 +221,8 @@ wss.on('connection', function connection(ws) {
 
             case 'set_ready': {
                 // New: handle ready/unready toggle from frontend
+                console.log(`Received ready state from ${userId}:`, data);
+                console.log(`Player role: ${player.role}`);
                 if (player.role === 'player' && typeof data.ready === 'boolean') {
                     player.ready = data.ready;
                     console.log(`${player.username || userId} set ready: ${data.ready}`);
