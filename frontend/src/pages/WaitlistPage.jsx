@@ -51,11 +51,15 @@ const WaitlistPage = () => {
           }
         }
       }
-      // Handle messages that update lobby state (e.g., player joined, player ready, lobby created/joined)
-      if (msg.type === 'lobby_state_update') { // Assuming a message type for lobby state updates
-        setPlayers(msg.players);
-        setLobbyName(msg.lobbyName); // Update lobby name
-        setCurrentUserId(msg.currentUserId); // Set current user ID
+      // Also update players on lobby_state_update (for ready state changes)
+      if (msg.type === 'lobby_state_update') {
+        setPlayers(msg.players.map(p => ({
+          id: p.userId || p.id,
+          name: p.username || `Player ${(p.userId || p.id)?.substring(0, 4)}`,
+          isReady: !!p.isReady
+        })));
+        setLobbyName(msg.lobbyName);
+        setCurrentUserId(msg.currentUserId);
       } else if (msg.type === 'game_start_countdown') {
         setIsStarting(true);
         setCountdown(msg.countdown);

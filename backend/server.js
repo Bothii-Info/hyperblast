@@ -213,6 +213,16 @@ wss.on('connection', function connection(ws) {
                 if (player.role === 'player' && typeof data.ready === 'boolean') {
                     player.ready = data.ready;
                     console.log(`${player.username || userId} set ready: ${data.ready}`);
+                    // Broadcast updated lobby members to all clients in the same lobby
+                    const code = player.lobbyCode;
+                    if (code && lobbies[code]) {
+                        const memberList = lobbies[code].players.map(uid => ({
+                            userId: uid,
+                            username: players[uid]?.username || null,
+                            isReady: players[uid]?.ready || false
+                        }));
+                        broadcast("lobby_members", { code, members: memberList });
+                    }
                     updateLobbyStatus();
                     tryStartGame();
                 }

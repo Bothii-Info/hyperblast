@@ -61,7 +61,8 @@ const CreateLobbyPage = () => {
       type: 'create_lobby',
       name: lobbyName.trim(), // Trim lobby name
       maxPlayers: maxPlayers,
-      username: username.trim() // Send username
+      username: username.trim(), // Send username
+      role: 'player' // Ensure role is set to player
     });
   };
 

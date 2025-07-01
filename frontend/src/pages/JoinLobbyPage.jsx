@@ -47,7 +47,8 @@ const JoinLobbyPage = () => {
     sendMessage({
       type: 'join_lobby',
       code: lobbyCode.trim().toUpperCase(),
-      username: username.trim() // Send username
+      username: username.trim(), // Send username
+      role: 'player' // Ensure role is set to player
     });
   };
 
