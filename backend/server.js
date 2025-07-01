@@ -3,7 +3,7 @@ const http = require('http');
 
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
-const port = 8080;
+const port = process.env.PORT || 8080;
 
 // Player storage
 let players = {}; // key: userId, value: { ws, username, role, ready, score }

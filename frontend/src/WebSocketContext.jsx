@@ -13,10 +13,14 @@ export function WebSocketProvider({ children }) {
 
   useEffect(() => {
     // Set up WebSocket connection
-    // Using ws:// protocol for HTTP testing (non-secure)
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-    const wsHost = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host;
-    ws.current = new window.WebSocket(`${wsProtocol}${wsHost}`);
+    let wsUrl;
+    if (process.env.NODE_ENV === 'production') {
+      wsUrl = 'wss://hyperblast.onrender.com';
+    } else {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+      wsUrl = `${wsProtocol}localhost:8080`;
+    }
+    ws.current = new window.WebSocket(wsUrl);
 
     ws.current.onopen = () => setWsStatus('open');
     ws.current.onclose = () => setWsStatus('closed');
