@@ -14,6 +14,7 @@ const PlayerPage = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null); // For optional bounding box overlay
   const ws = useRef(null);
+  const resizeObserverRef = useRef(null);
 
   // Detection model refs and state
   const modelRef = useRef(null);
@@ -314,7 +315,13 @@ const PlayerPage = () => {
   useEffect(() => {
     let animationId;
     const runSegmentation = async () => {
-      if (isSegmentationLoaded && videoRef.current && selfieSegmentationRef.current) {
+      if (
+        isSegmentationLoaded &&
+        videoRef.current &&
+        selfieSegmentationRef.current &&
+        videoRef.current.videoWidth > 0 &&
+        videoRef.current.videoHeight > 0
+      ) {
         await selfieSegmentationRef.current.send({ image: videoRef.current });
       }
       animationId = requestAnimationFrame(runSegmentation);
@@ -325,64 +332,165 @@ const PlayerPage = () => {
     return () => cancelAnimationFrame(animationId);
   }, [isSegmentationLoaded]);
 
-  // Draw segmentation mask (outline) on canvas
+  // Setup canvas sizing with ResizeObserver
   useEffect(() => {
-    if (canvasRef.current && videoRef.current) {
+    const setupCanvasSize = () => {
+      if (canvasRef.current && videoRef.current) {
+        const canvas = canvasRef.current;
+        const video = videoRef.current;
+        
+        // Get the actual displayed size of the video element
+        const rect = video.getBoundingClientRect();
+        
+        // Set canvas to match the video's display size exactly
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${rect.height}px`;
+      }
+    };
+
+    // Initial setup
+    setupCanvasSize();
+
+    // Setup ResizeObserver to handle window resizing
+    if (window.ResizeObserver) {
+      resizeObserverRef.current = new ResizeObserver(() => {
+        setupCanvasSize();
+      });
+      
+      if (videoRef.current) {
+        resizeObserverRef.current.observe(videoRef.current);
+      }
+    }
+
+    // Fallback for older browsers
+    const handleResize = () => setupCanvasSize();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    return () => {
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+      }
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+
+  // Draw segmentation mask with proper video cropping handling
+  useEffect(() => {
+    if (canvasRef.current && videoRef.current && videoRef.current.videoWidth > 0) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       const video = videoRef.current;
-      // Use the smallest aspect ratio to fit both video and mask
+      
+      // Get video element's display dimensions
+      const videoRect = video.getBoundingClientRect();
+      
+      // Calculate how the video is actually displayed with object-cover
       const videoAspect = video.videoWidth / video.videoHeight;
-      const canvasAspect = canvas.width / canvas.height;
-      let drawWidth = canvas.width;
-      let drawHeight = canvas.height;
-      let offsetX = 0;
-      let offsetY = 0;
-      if (videoAspect > canvasAspect) {
-        // Video is wider than canvas
-        drawWidth = canvas.height * videoAspect;
-        drawHeight = canvas.height;
-        offsetX = (canvas.width - drawWidth) / 2;
-      } else if (videoAspect < canvasAspect) {
-        // Video is taller than canvas
-        drawWidth = canvas.width;
-        drawHeight = canvas.width / videoAspect;
-        offsetY = (canvas.height - drawHeight) / 2;
+      const displayAspect = videoRect.width / videoRect.height;
+      
+      let sourceX = 0, sourceY = 0, sourceWidth = video.videoWidth, sourceHeight = video.videoHeight;
+      let destX = 0, destY = 0, destWidth = canvas.width, destHeight = canvas.height;
+      
+      // Handle object-cover cropping behavior
+      if (displayAspect > videoAspect) {
+        // Display is wider than video - crop top/bottom of video
+        const newHeight = video.videoWidth / displayAspect;
+        sourceY = (video.videoHeight - newHeight) / 2;
+        sourceHeight = newHeight;
+      } else {
+        // Display is taller than video - crop left/right of video  
+        const newWidth = video.videoHeight * displayAspect;
+        sourceX = (video.videoWidth - newWidth) / 2;
+        sourceWidth = newWidth;
       }
+      
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
       if (segmentationMask) {
         ctx.save();
-        ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+        
+        // Create properly sized temporary canvas for the mask
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        
+        // Draw cropped segmentation mask to match video display
+        tempCtx.drawImage(
+          segmentationMask,
+          sourceX, sourceY, sourceWidth, sourceHeight,  // Source crop area
+          0, 0, canvas.width, canvas.height  // Destination full canvas
+        );
+        
+        // Draw cropped video frame
+        ctx.drawImage(
+          video,
+          sourceX, sourceY, sourceWidth, sourceHeight,  // Source crop area  
+          destX, destY, destWidth, destHeight  // Destination full canvas
+        );
+        
+        // Apply mask
         ctx.globalCompositeOperation = 'destination-in';
-        ctx.drawImage(segmentationMask, offsetX, offsetY, drawWidth, drawHeight);
+        ctx.drawImage(tempCanvas, 0, 0);
+        
+        // Add green overlay
         ctx.globalCompositeOperation = 'source-atop';
         ctx.fillStyle = 'rgba(0,255,0,0.4)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
         ctx.restore();
+        
+        // Draw person labels with proper coordinate transformation
         if (detectedPeople && detectedPeople.length > 0) {
           detectedPeople.forEach(person => {
-            // Adjust label position for scaling/offset
             const [x, y, width, height] = person.bbox;
-            const labelX = offsetX + (x + width / 2) * (drawWidth / video.videoWidth);
-            const labelY = offsetY + y * (drawHeight / video.videoHeight) - 10;
-            ctx.fillStyle = '#00ff00';
-            ctx.font = '20px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(`Person ${person.id}`, labelX, labelY);
+            
+            // Transform bounding box coordinates to match the cropped/scaled display
+            const scaleX = canvas.width / sourceWidth;
+            const scaleY = canvas.height / sourceHeight;
+            const labelX = (x - sourceX) * scaleX + width * scaleX / 2;
+            const labelY = (y - sourceY) * scaleY - 10;
+            
+            // Only draw labels for people visible in the cropped area
+            if (labelX >= 0 && labelX <= canvas.width && labelY >= -30 && labelY <= canvas.height) {
+              ctx.fillStyle = '#00ff00';
+              ctx.font = '20px Arial';
+              ctx.textAlign = 'center';
+              ctx.fillText(`Person ${person.id}`, labelX, labelY);
+            }
           });
         }
       } else if (detectedPeople && detectedPeople.length > 0) {
-        // fallback: draw bounding boxes ONLY if no mask
+        // Fallback: draw properly scaled bounding boxes
         detectedPeople.forEach(person => {
           const [x, y, width, height] = person.bbox;
-          ctx.strokeStyle = '#00ff00';
-          ctx.lineWidth = 3;
-          ctx.strokeRect(x, y, width, height);
-          ctx.fillStyle = '#00ff00';
-          ctx.font = '16px Arial';
-          ctx.fillRect(x, y - 25, 80, 25);
-          ctx.fillStyle = '#000000';
-          ctx.fillText(`Person ${person.id}`, x + 5, y - 8);
+          
+          // Transform coordinates to match cropped display
+          const scaleX = canvas.width / sourceWidth;
+          const scaleY = canvas.height / sourceHeight;
+          
+          const scaledX = (x - sourceX) * scaleX;
+          const scaledY = (y - sourceY) * scaleY;
+          const scaledWidth = width * scaleX;
+          const scaledHeight = height * scaleY;
+          
+          // Only draw boxes for people visible in the cropped area
+          if (scaledX + scaledWidth >= 0 && scaledX <= canvas.width && 
+              scaledY + scaledHeight >= 0 && scaledY <= canvas.height) {
+            
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(scaledX, scaledY, scaledWidth, scaledHeight);
+            ctx.fillStyle = '#00ff00';
+            ctx.font = '16px Arial';
+            ctx.fillRect(scaledX, scaledY - 25, 80, 25);
+            ctx.fillStyle = '#000000';
+            ctx.fillText(`Person ${person.id}`, scaledX + 5, scaledY - 8);
+          }
         });
       }
     }
@@ -397,34 +505,55 @@ const PlayerPage = () => {
     setScore(s => s + 50);
   };
 
-  // Detect hit when shooting
+  // Updated hit detection with proper coordinate transformation
   const handleShoot = () => {
     if (health <= 0 || isMenuOpen) return;
     let hit = false;
+
     if (segmentationMask && detectedPeople.length > 0 && videoRef.current && canvasRef.current) {
-      const videoWidth = videoRef.current.videoWidth;
-      const videoHeight = videoRef.current.videoHeight;
-      const centerX = Math.floor(videoWidth / 2);
-      const centerY = Math.floor(videoHeight / 2);
-      // Get segmentation mask pixel data
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const videoRect = video.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      // Calculate the center of the canvas (crosshair position in display coordinates)
+      const displayCenterX = canvasRect.left + canvasRect.width / 2;
+      const displayCenterY = canvasRect.top + canvasRect.height / 2;
+      // Map display center to video coordinates, considering cropping/scaling
+      const videoAspect = video.videoWidth / video.videoHeight;
+      const displayAspect = canvasRect.width / canvasRect.height;
+      let sourceX = 0, sourceY = 0, sourceWidth = video.videoWidth, sourceHeight = video.videoHeight;
+      if (displayAspect > videoAspect) {
+        const newHeight = video.videoWidth / displayAspect;
+        sourceY = (video.videoHeight - newHeight) / 2;
+        sourceHeight = newHeight;
+      } else {
+        const newWidth = video.videoHeight * displayAspect;
+        sourceX = (video.videoWidth - newWidth) / 2;
+        sourceWidth = newWidth;
+      }
+      // Calculate the relative position of the crosshair in the canvas
+      const relX = (displayCenterX - canvasRect.left) / canvasRect.width;
+      const relY = (displayCenterY - canvasRect.top) / canvasRect.height;
+      // Map to video coordinates (cropped area)
+      const videoX = sourceX + relX * sourceWidth;
+      const videoY = sourceY + relY * sourceHeight;
+      // Get segmentation mask pixel data at mapped point
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = videoWidth;
-      tempCanvas.height = videoHeight;
+      tempCanvas.width = video.videoWidth;
+      tempCanvas.height = video.videoHeight;
       const tempCtx = tempCanvas.getContext('2d');
-      tempCtx.drawImage(segmentationMask, 0, 0, videoWidth, videoHeight);
-      const maskData = tempCtx.getImageData(centerX, centerY, 1, 1).data;
-      // MediaPipe mask: person pixels are white (255,255,255,255), background is black (0,0,0,255)
-      // Some masks may use alpha for confidence, so check alpha > 128 and at least one channel > 128
+      tempCtx.drawImage(segmentationMask, 0, 0, video.videoWidth, video.videoHeight);
+      const maskData = tempCtx.getImageData(Math.floor(videoX), Math.floor(videoY), 1, 1).data;
+      // Check if mapped point is on a person in the segmentation mask
       if (maskData[3] > 128 && (maskData[0] > 128 || maskData[1] > 128 || maskData[2] > 128)) {
-        // Center is on a person in the segmentation mask
-        // Find the closest detected person to the center
+        // Find the closest detected person to the mapped point
         let minDist = Infinity;
         let hitPerson = null;
         detectedPeople.forEach(person => {
           const [x, y, width, height] = person.bbox;
           const px = x + width / 2;
           const py = y + height / 2;
-          const dist = Math.sqrt(Math.pow(centerX - px, 2) + Math.pow(centerY - py, 2));
+          const dist = Math.sqrt(Math.pow(videoX - px, 2) + Math.pow(videoY - py, 2));
           if (dist < minDist) {
             minDist = dist;
             hitPerson = person;
@@ -436,11 +565,23 @@ const PlayerPage = () => {
         }
       }
     } else if (detectedPeople.length > 0 && videoRef.current) {
-      // fallback: old logic if no segmentation
-      const videoWidth = videoRef.current.videoWidth;
-      const videoHeight = videoRef.current.videoHeight;
-      const centerX = videoWidth / 2;
-      const centerY = videoHeight / 2;
+      // Fallback: old logic if no segmentation
+      const video = videoRef.current;
+      const videoRect = video.getBoundingClientRect();
+      const videoAspect = video.videoWidth / video.videoHeight;
+      const displayAspect = videoRect.width / videoRect.height;
+      let sourceX = 0, sourceY = 0, sourceWidth = video.videoWidth, sourceHeight = video.videoHeight;
+      if (displayAspect > videoAspect) {
+        const newHeight = video.videoWidth / displayAspect;
+        sourceY = (video.videoHeight - newHeight) / 2;
+        sourceHeight = newHeight;
+      } else {
+        const newWidth = video.videoHeight * displayAspect;
+        sourceX = (video.videoWidth - newWidth) / 2;
+        sourceWidth = newWidth;
+      }
+      const centerX = sourceX + sourceWidth / 2;
+      const centerY = sourceY + sourceHeight / 2;
       const hitPerson = detectedPeople.find(person => {
         const [x, y, width, height] = person.bbox;
         return centerX >= x && centerX <= (x + width) && centerY >= y && centerY <= (y + height);
@@ -456,6 +597,15 @@ const PlayerPage = () => {
     if (ws.current && ws.current.readyState === 1) {
       ws.current.send(JSON.stringify({ type: 'shoot' }));
     }
+  };
+
+  const handleSuicide = () => {
+    setHealth(0);
+    setIsMenuOpen(false);
+  };
+
+  const handleQuit = () => {
+    navigate('/');
   };
 
   // --- Other Effects ---
