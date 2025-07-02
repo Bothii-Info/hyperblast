@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Header from '../components/Header';
+import BackgroundDecorations from "../components/BackgroundDecorations"
 import Button from '../components/Button';
-import { LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut } from 'lucide-react';
 import { useWebSocket } from '../WebSocketContext'; // Import useWebSocket
 import PlayerWaitlistPage from './PlayerWaitlistPage'; // Import PlayerWaitlistPage
 
@@ -203,27 +203,53 @@ const WaitlistPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-900 text-white">
-      <Header title={lobbyName} showBackButton={!isStarting} />
+    <div className="min-h-screen bg-gradient-to-br from-[#0f051d] via-[#1f152b] to-[#0f051d] relative overflow-hidden">
+      <BackgroundDecorations />
+
+      {/* HBlast Header */}
+      <header className="flex justify-between items-center py-4 md:py-6 relative z-10 px-4 md:px-6 lg:px-8">
+        <div className="flex items-center gap-4">
+          {!isStarting && (
+            <button
+              onClick={() => navigate("/lobby")}
+              className="text-white hover:text-[#e971ff] transition-colors p-2 rounded-full hover:bg-white/10"
+            >
+              <ArrowLeft size={24} />
+            </button>
+          )}
+          <div className="text-white text-xl md:text-2xl font-bold">HBlast</div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-[#b7b4bb] text-sm md:text-base">{lobbyName}</div>
+          <div className="w-8 h-8 md:w-10 md:h-10">
+            <img src="/images/icon.png" alt="HBlast Score Icon" className="w-full h-full object-contain" />
+          </div>
+        </div>
+      </header>
 
       {/* LOBBY CODE AT TOP */}
-      <div className="mx-auto mt-4 w-full max-w-2xl text-center">
-        <div className="inline-block rounded bg-gray-800/80 px-4 py-2 text-lg font-mono font-semibold text-blue-300 shadow">
-          Lobby Code: <span className="text-white">{lobbyId?.toUpperCase()}</span>
+      <div className="text-center mb-6 px-4 relative z-10">
+        <div className="inline-block bg-gradient-to-r from-[#1f152b] to-[#0f051d] border-2 border-[#9351f7]/40 rounded-xl px-4 md:px-6 py-2 md:py-3 shadow-lg hover:shadow-xl transition-all duration-200">
+          <span className="text-sm text-[#b7b4bb]">Lobby Code: </span>
+          <span className="text-lg md:text-xl font-mono font-bold text-[#e971ff] tracking-widest">
+            {lobbyId?.toUpperCase()}
+          </span>
         </div>
       </div>
 
-      <main className="flex flex-grow flex-col justify-center p-4 md:p-6">
+      <main className="flex flex-grow flex-col justify-center p-4 md:p-6 relative z-10">
         <div className="mx-auto w-full max-w-2xl">
           {/* Always show PlayerWaitlistPage - simplified logic */}
           <PlayerWaitlistPage
             players={players}
-            currentUser={currentUser || {
-              id: currentUserId,
-              name: 'You',
-              isHost: true,
-              isReady: false
-            }}
+            currentUser={
+              currentUser || {
+                id: currentUserId,
+                name: "You",
+                isHost: true,
+                isReady: false,
+              }
+            }
             lobbyCode={lobbyId}
             isStarting={isStarting}
             countdown={countdown}
@@ -233,20 +259,23 @@ const WaitlistPage = () => {
 
           {/* COUNTDOWN IF STARTING */}
           {isStarting && (
-            <div className="mb-6 text-center text-2xl font-bold text-blue-400">
-              Game starting in {countdown}...
-            </div>
+            <div className="mb-6 text-center text-2xl font-bold text-[#e971ff]">Game starting in {countdown}...</div>
           )}
         </div>
       </main>
 
       {!isStarting && (
-         <footer className="p-4">
-            <div className="mx-auto max-w-md">
-              <Button onClick={() => navigate('/lobby')} className="flex items-center justify-center gap-2 bg-red-800/80 font-normal normal-case tracking-normal hover:bg-red-700/80">
-                <LogOut size={20} /><span>Leave Lobby</span>
-              </Button>
-            </div>
+        <footer className="p-4 relative z-10">
+          <div className="mx-auto max-w-md">
+            <Button
+              onClick={() => navigate("/lobby")}
+              variant="outline"
+              className="flex items-center justify-center gap-2 border-red-500 text-red-400 hover:bg-red-500 hover:text-white bg-transparent"
+            >
+              <LogOut size={20} />
+              <span>Leave Lobby</span>
+            </Button>
+          </div>
         </footer>
       )}
     </div>
