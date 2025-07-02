@@ -14,7 +14,7 @@ const JoinLobbyPage = () => {
   const [lobbyCode, setLobbyCode] = useState('');
   const [username, setUsername] = useState(''); // New state for username
   const navigate = useNavigate();
-  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+  const { sendMessage, lastMessage, wsStatus, ws } = useWebSocket();
 
   React.useEffect(() => {
     if (!lastMessage) return;

@@ -13,7 +13,7 @@ import PlayerWaitlistPage from './PlayerWaitlistPage'; // Import PlayerWaitlistP
 const WaitlistPage = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { lastMessage, sendMessage, wsStatus } = useWebSocket(); // Use useWebSocket to receive messages
+  const { lastMessage, sendMessage, wsStatus, ws } = useWebSocket(); // Use useWebSocket to receive messages
 
   // --- STATE MANAGEMENT ---
   const [players, setPlayers] = useState([]); // Initialize as empty array

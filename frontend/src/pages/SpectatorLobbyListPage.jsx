@@ -19,7 +19,7 @@ const dummyLobbies = [
 const SpectatorLobbyListPage = () => {
   const [lobbies, setLobbies] = useState([]);
   const navigate = useNavigate();
-  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+  const { sendMessage, lastMessage, wsStatus, ws } = useWebSocket();
 
   useEffect(() => {
     if (wsStatus === 'open') {

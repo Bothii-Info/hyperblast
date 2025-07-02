@@ -14,11 +14,17 @@ export function WebSocketProvider({ children }) {
   useEffect(() => {
     // Set up WebSocket connection
     let wsUrl;
-    if (process.env.NODE_ENV === 'production') {
-      wsUrl = 'wss://hyperblast.onrender.com';
-    } else {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-      wsUrl = `${wsProtocol}localhost:8080`;
+    // --- LOCAL TESTING ---
+    // Uncomment the following line to force local WebSocket connection for testing:
+    // wsUrl = 'ws://localhost:8080';
+    // --- END LOCAL TESTING ---
+    if (!wsUrl) {
+      if (process.env.NODE_ENV === 'production') {
+        wsUrl = 'wss://hyperblast.onrender.com';
+      } else {
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        wsUrl = `${wsProtocol}localhost:8080`;
+      }
     }
     ws.current = new window.WebSocket(wsUrl);
 
@@ -54,7 +60,7 @@ export function WebSocketProvider({ children }) {
   };
 
   return (
-    <WebSocketContext.Provider value={{ ws, wsStatus, lastMessage, sendMessage }}>
+    <WebSocketContext.Provider value={{ ws: ws.current, wsStatus, lastMessage, sendMessage }}>
       {children}
     </WebSocketContext.Provider>
   );

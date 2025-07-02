@@ -10,7 +10,7 @@ import { useWebSocket } from '../WebSocketContext';
 const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInputValue, setNameInputValue] = useState('');
-  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+  const { sendMessage, lastMessage, wsStatus, ws } = useWebSocket();
 
   useEffect(() => {
     if (currentUser) {
