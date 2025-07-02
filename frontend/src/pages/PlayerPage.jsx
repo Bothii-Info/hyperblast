@@ -500,10 +500,16 @@ const PlayerPage = () => {
     }
   }, [detectedPeople, segmentationMask]);
 
+  // --- Reload State ---
+  const [isReloading, setIsReloading] = useState(false);
+
   // --- Event Handlers ---
+  // Using personId for now
+  // Will add in functionality for it later
   const handlePlayerHit = (personId) => {
     setShowHitIndicator('hit');
     setScore(s => {
+      // TODO: Add code for different gun classes and their score multipliers
       const newScore = s + 50;
       if (ws.current && ws.current.readyState === 1) {
         ws.current.send(JSON.stringify({ type: 'score', score: newScore }));
@@ -514,8 +520,11 @@ const PlayerPage = () => {
 
   // Updated hit detection with proper coordinate transformation
   const handleShoot = () => {
-    if (health <= 0 || isMenuOpen) return;
+    if (health <= 0 || isMenuOpen || isReloading || gameStarting) return;
+    setIsReloading(true);
+    setTimeout(() => setIsReloading(false), 2000); // 2 seconds reload
     let hit = false;
+    let weapon = 'gun'; // Default weapon
 
     if (segmentationMask && detectedPeople.length > 0 && videoRef.current && canvasRef.current) {
       const video = videoRef.current;
@@ -595,9 +604,13 @@ const PlayerPage = () => {
     if (!hit) {
       playSound(missSoundRef);
       setShowHitIndicator('miss');
-    }
-    if (ws.current && ws.current.readyState === 1) {
-      ws.current.send(JSON.stringify({ type: 'shoot' }));
+      if (ws.current && ws.current.readyState === 1) {
+        ws.current.send(JSON.stringify({ type: 'miss', weapon }));
+      }
+    } else {
+      if (ws.current && ws.current.readyState === 1) {
+        ws.current.send(JSON.stringify({ type: 'hit', weapon }));
+      }
     }
   };
 
@@ -677,7 +690,14 @@ const PlayerPage = () => {
           <button onClick={() => setIsMenuOpen(true)} className="rounded-lg bg-black/50 p-2 backdrop-blur-sm"><Menu size={24} /></button>
         </div>
         <div className="flex flex-col items-center gap-3">
-          <button onClick={handleShoot} disabled={health <= 0 || isMenuOpen || gameStarting} className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white/50 bg-red-600/80 text-white transition-transform active:scale-90 disabled:cursor-not-allowed disabled:bg-gray-700/80"><Crosshair size={48} /></button>
+          <button onClick={handleShoot} disabled={health <= 0 || isMenuOpen || gameStarting || isReloading} className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white/50 bg-red-600/80 text-white transition-transform active:scale-90 disabled:cursor-not-allowed disabled:bg-gray-700/80 relative">
+            <Crosshair size={48} />
+            {isReloading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-full z-10">
+                <span className="text-lg font-bold animate-pulse">RELOADING...</span>
+              </div>
+            )}
+          </button>
         </div>
       </div>
     </div>

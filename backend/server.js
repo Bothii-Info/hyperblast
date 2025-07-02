@@ -203,6 +203,7 @@ wss.on('connection', function connection(ws) {
                 }
 
                 if (joinLobby(userId, code)) {
+                    player.role = 'player'; // Set role to player when joining a lobby
                     console.log('Sending lobby_joined for code:', code, 'to user:', userId); // ADDED LOG
                     ws.send(JSON.stringify({
                         type: 'lobby_joined',
@@ -308,6 +309,16 @@ wss.on('connection', function connection(ws) {
                 }
                 break;
             }
+            case 'hit':
+                // Increase score by 50 if weapon is gun
+                if (data.weapon === 'gun') {
+                    player.score = (player.score || 0) + 50;
+                    updateLobbyStatus();
+                }
+                break;
+            case 'miss':
+                // No action for miss for now
+                break;
 
             default:
                 console.warn("Unknown message type:", data.type);
