@@ -12,6 +12,8 @@ let gameTimer = null;
 
 // Lobby storage
 let lobbies = {};
+// Store face scan data for each lobby
+const lobbyFaceData = {};
 
 function broadcast(type, payload) {
     const message = JSON.stringify({ type, ...payload });
@@ -55,7 +57,35 @@ function tryStartGame() {
     const readyPlayers = Object.values(players).filter(p => p.role === 'player' && p.ready);
     if (!gameStarted && readyPlayers.length >= 2) {
         gameStarted = true;
-        broadcast("game_start", { message: "Game has started!" });
+        
+        // Find the lobby code for these players
+        let lobbyCode = null;
+        for (const [code, lobby] of Object.entries(lobbies)) {
+            if (lobby.players.some(playerId => readyPlayers.some(p => p.id === playerId))) {
+                lobbyCode = code;
+                break;
+            }
+        }
+
+        // Prepare player identities from stored face data
+        let playerIdentities = {};
+        if (lobbyCode && lobbyFaceData[lobbyCode]) {
+            playerIdentities = lobbyFaceData[lobbyCode];
+        }
+
+        console.log(`Game starting in lobby ${lobbyCode} with player identities:`, playerIdentities);
+
+        if (lobbyCode) {
+            broadcastToLobby(lobbyCode, "game_start", { 
+                message: "Game has started!",
+                playerIdentities: playerIdentities,
+                lobbyCode: lobbyCode
+            });
+        } else {
+            // Fallback to global broadcast if no lobby found
+            broadcast("game_start", { message: "Game has started!" });
+        }
+        
         // Start timer
         gameTimer = setTimeout(endGame, 30000);
         return true;
@@ -381,6 +411,84 @@ wss.on('connection', function connection(ws) {
                 break;
             }
 
+            case 'store_face_data': {
+                // Store face scan data for a player in a specific lobby
+                const { faceData, lobbyCode, userId: scanUserId, detectionData } = data;
+                
+                if (!lobbyCode || !scanUserId || !faceData) {
+                    console.error('Missing required face data fields:', { lobbyCode, scanUserId, hasFaceData: !!faceData });
+                    break;
+                }
+
+                // Initialize lobby face data if not exists
+                if (!lobbyFaceData[lobbyCode]) {
+                    lobbyFaceData[lobbyCode] = {};
+                }
+
+                // Store the face scan data
+                lobbyFaceData[lobbyCode][scanUserId] = {
+                    faceData,
+                    username: players[scanUserId]?.username || 'Unknown',
+                    timestamp: Date.now(),
+                    detectionData: detectionData || null
+                };
+
+                console.log(`Stored face data for user ${scanUserId} (${players[scanUserId]?.username}) in lobby ${lobbyCode}`);
+
+                // Broadcast updated player identities to all clients in the lobby
+                if (lobbies[lobbyCode]) {
+                    const playerIdentities = {};
+                    lobbies[lobbyCode].players.forEach(uid => {
+                        if (lobbyFaceData[lobbyCode] && lobbyFaceData[lobbyCode][uid]) {
+                            playerIdentities[uid] = {
+                                username: players[uid]?.username || 'Unknown',
+                                faceData: lobbyFaceData[lobbyCode][uid].faceData,
+                                detectionData: lobbyFaceData[lobbyCode][uid].detectionData
+                            };
+                        }
+                    });
+
+                    broadcastToLobby(lobbyCode, "player_identities_updated", { 
+                        playerIdentities,
+                        lobbyCode 
+                    });
+                }
+                break;
+            }
+
+            case 'get_player_identities': {
+                // Send current player identities for a lobby
+                const { lobbyCode: requestedLobbyCode } = data;
+                const code = requestedLobbyCode || player.lobbyCode;
+                
+                if (code && lobbies[code] && lobbyFaceData[code]) {
+                    const playerIdentities = {};
+                    lobbies[code].players.forEach(uid => {
+                        if (lobbyFaceData[code][uid]) {
+                            playerIdentities[uid] = {
+                                username: players[uid]?.username || 'Unknown',
+                                faceData: lobbyFaceData[code][uid].faceData,
+                                detectionData: lobbyFaceData[code][uid].detectionData
+                            };
+                        }
+                    });
+
+                    ws.send(JSON.stringify({ 
+                        type: 'player_identities', 
+                        playerIdentities,
+                        lobbyCode: code 
+                    }));
+                    console.log(`Sent player identities for lobby ${code} to user ${userId}`);
+                } else {
+                    ws.send(JSON.stringify({ 
+                        type: 'player_identities', 
+                        playerIdentities: {},
+                        lobbyCode: code 
+                    }));
+                }
+                break;
+            }
+
             default:
                 console.warn("Unknown message type:", data.type);
         }
@@ -427,4 +535,14 @@ function removeNullUsersFromLobby(lobbyCode) {
             delete players[uid];
         }
     });
+}
+
+// Delete a lobby
+function deleteLobby(code) {
+    if (lobbies[code]) {
+        delete lobbies[code];
+        // Clean up face data for this lobby
+        delete lobbyFaceData[code];
+        console.log(`Deleted lobby ${code} and cleaned up face data`);
+    }
 }
