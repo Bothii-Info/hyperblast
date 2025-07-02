@@ -351,13 +351,13 @@ wss.on('connection', function connection(ws) {
             case 'hit':
 
                 // Increase score by 50 if weapon is gun
-                if (player.weapon === 'gun') {
+                if ( player.class === 'pistol') {
                     player.score = (player.score || 0) + 10;
                 }
-                else if (player.weapon === 'shotgun') {
+                else if ( player.class === 'shotgun') {
                     player.score = (player.score || 0) + 40;
                 }
-                else if (player.weapon === 'archer') {
+                else if ( player.class === 'archer') {
                     player.score = (player.score || 0) + 70;
                 }
                 updateLobbyStatus();

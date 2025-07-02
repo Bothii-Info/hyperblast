@@ -530,13 +530,12 @@ const PlayerPage = () => {
     setShowHitIndicator('hit');
     setScore(s => { 
       // TODO: Add code for different gun classes and their score multipliers
-      const newScore = s + 50;
-      if (!ws) {
-        console.log('Websocket not working');
-      }
       if (ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: 'score', score: newScore }));
+        console.log("Sending hit event to server");
       }
+      // Add code for the dedicated weapon score incerases
+      const newScore = s + 50;
+      
       return newScore;
     });
   };
@@ -545,9 +544,9 @@ const PlayerPage = () => {
   const handleShoot = () => {
     if (health <= 0 || isMenuOpen || isReloading || gameStarting) return;
     setIsReloading(true);
+    // Add code for the reload duration
     setTimeout(() => setIsReloading(false), 2000); // 2 seconds reload
     let hit = false;
-    let weapon = 'gun'; // Default weapon
 
     if (segmentationMask && detectedPeople.length > 0 && videoRef.current && canvasRef.current) {
       const video = videoRef.current;
@@ -628,12 +627,12 @@ const PlayerPage = () => {
       playSound(missSoundRef);
       setShowHitIndicator('miss');
       if (ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: 'miss', weapon }));
+        ws.send(JSON.stringify({ type: 'miss'}));
       }
     } else {
       if (ws && ws.readyState === 1) {
         console.log("Sending hit event to server");
-        ws.send(JSON.stringify({ type: 'hit', weapon }));
+        ws.send(JSON.stringify({ type: 'hit'}));
       }
     }
   };
