@@ -57,7 +57,7 @@ function tryStartGame() {
     const readyPlayers = Object.values(players).filter(p => p.role === 'player' && p.ready);
     if (!gameStarted && readyPlayers.length >= 2) {
         gameStarted = true;
-        
+
         // Find the lobby code for these players
         let lobbyCode = null;
         for (const [code, lobby] of Object.entries(lobbies)) {
@@ -76,7 +76,7 @@ function tryStartGame() {
         console.log(`Game starting in lobby ${lobbyCode} with player identities:`, playerIdentities);
 
         if (lobbyCode) {
-            broadcastToLobby(lobbyCode, "game_start", { 
+            broadcastToLobby(lobbyCode, "game_start", {
                 message: "Game has started!",
                 playerIdentities: playerIdentities,
                 lobbyCode: lobbyCode
@@ -85,17 +85,22 @@ function tryStartGame() {
             // Fallback to global broadcast if no lobby found
             broadcast("game_start", { message: "Game has started!" });
         }
-        
+
         // Start timer
-        gameTimer = setTimeout(endGame, 30000);
+        gameTimer = setTimeout(endGame, 100000);
         return true;
     }
     return false;
 }
 
 function generateLobbyCode() {
-    // Simple 6-character alphanumeric code
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+    // 6-character alphabetic code (A-Z)
+    let code = '';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
 }
 
 function createLobby(hostUserId, maxPlayers = 8, name = "Lobby", playerClass = "pistol") {
@@ -381,13 +386,13 @@ wss.on('connection', function connection(ws) {
             case 'hit':
 
                 // Increase score by 50 if weapon is gun
-                if ( player.class === 'pistol') {
+                if (player.class === 'pistol') {
                     player.score = (player.score || 0) + 10;
                 }
-                else if ( player.class === 'shotgun') {
+                else if (player.class === 'shotgun') {
                     player.score = (player.score || 0) + 40;
                 }
-                else if ( player.class === 'archer') {
+                else if (player.class === 'archer') {
                     player.score = (player.score || 0) + 70;
                 }
                 updateLobbyStatus();
@@ -414,7 +419,7 @@ wss.on('connection', function connection(ws) {
             case 'store_face_data': {
                 // Store face scan data for a player in a specific lobby
                 const { faceData, lobbyCode, userId: scanUserId, detectionData } = data;
-                
+
                 if (!lobbyCode || !scanUserId || !faceData) {
                     console.error('Missing required face data fields:', { lobbyCode, scanUserId, hasFaceData: !!faceData });
                     break;
@@ -448,9 +453,9 @@ wss.on('connection', function connection(ws) {
                         }
                     });
 
-                    broadcastToLobby(lobbyCode, "player_identities_updated", { 
+                    broadcastToLobby(lobbyCode, "player_identities_updated", {
                         playerIdentities,
-                        lobbyCode 
+                        lobbyCode
                     });
                 }
                 break;
@@ -460,7 +465,7 @@ wss.on('connection', function connection(ws) {
                 // Send current player identities for a lobby
                 const { lobbyCode: requestedLobbyCode } = data;
                 const code = requestedLobbyCode || player.lobbyCode;
-                
+
                 if (code && lobbies[code] && lobbyFaceData[code]) {
                     const playerIdentities = {};
                     lobbies[code].players.forEach(uid => {
@@ -473,17 +478,17 @@ wss.on('connection', function connection(ws) {
                         }
                     });
 
-                    ws.send(JSON.stringify({ 
-                        type: 'player_identities', 
+                    ws.send(JSON.stringify({
+                        type: 'player_identities',
                         playerIdentities,
-                        lobbyCode: code 
+                        lobbyCode: code
                     }));
                     console.log(`Sent player identities for lobby ${code} to user ${userId}`);
                 } else {
-                    ws.send(JSON.stringify({ 
-                        type: 'player_identities', 
+                    ws.send(JSON.stringify({
+                        type: 'player_identities',
                         playerIdentities: {},
-                        lobbyCode: code 
+                        lobbyCode: code
                     }));
                 }
                 break;

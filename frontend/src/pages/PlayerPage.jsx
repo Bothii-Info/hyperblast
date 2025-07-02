@@ -28,7 +28,7 @@ const PlayerPage = () => {
   // --- Game State ---
   const [health, setHealth] = useState(100);
   const [score, setScore] = useState(0);
-  const [gameTime, setGameTime] = useState(30);
+  const [gameTime, setGameTime] = useState(100);
   const [showHitIndicator, setShowHitIndicator] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [gameStarting, setGameStarting] = useState(false);
