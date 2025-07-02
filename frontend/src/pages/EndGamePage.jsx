@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Header from '../components/Header';
+import Header from '../components/HeaderOld';
 import Button from '../components/Button';
 import Leaderboard from '../components/Leaderboard';
 import { Crown, Home, Eye } from 'lucide-react';

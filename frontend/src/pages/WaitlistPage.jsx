@@ -1,141 +1,207 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import Header from '../components/Header';
-import Button from '../components/Button';
-import { LogOut } from 'lucide-react';
-import { useWebSocket } from '../WebSocketContext'; // Import useWebSocket
-import PlayerWaitlistPage from './PlayerWaitlistPage'; // Import PlayerWaitlistPage
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+import { ArrowLeft, LogOut } from "lucide-react"
+import { useWebSocket } from "../WebSocketContext"
+import PlayerWaitlistPage from "./PlayerWaitlistPage"
+import HostWaitlistPage from "./HostWaitlistPage"
+import BackgroundDecorations from "../components/BackgroundDecorations"
+import Button from "../components/Button"
 
 /**
- * This component acts as a controller. It fetches shared data
- * and then renders either the Host or Player view.
+ * This component acts as a controller with HBlast design consistency.
+ * It fetches shared data and renders either the Host or Player view.
  */
-const WaitlistPage = () => {
-  const { lobbyId } = useParams();
-  const navigate = useNavigate();
-  const { lastMessage, sendMessage, wsStatus } = useWebSocket(); // Use useWebSocket to receive messages
+function WaitlistPage() {
+  const { lobbyId } = useParams()
+  const navigate = useNavigate()
+  const { lastMessage, sendMessage, wsStatus } = useWebSocket()
 
   // --- STATE MANAGEMENT ---
-  const [players, setPlayers] = useState([]); // Initialize as empty array
-  const [lobbyName, setLobbyName] = useState('Game Lobby'); // New state for lobby name
-  const [currentUserId, setCurrentUserId] = useState(null); // New state for current user ID
-  const [isStarting, setIsStarting] = useState(false);
-  const [countdown, setCountdown] = useState(30);
+  const [players, setPlayers] = useState([])
+  const [lobbyName, setLobbyName] = useState("Game Lobby")
+  const [currentUserId, setCurrentUserId] = useState(null)
+  const [isStarting, setIsStarting] = useState(false)
+  const [countdown, setCountdown] = useState(30)
 
   // --- DERIVED STATE ---
   const currentUser = useMemo(() => {
-    if (!currentUserId || players.length === 0) return null;
-    const user = players.find(p => p.id === currentUserId);
-    return user || null;
-  }, [players, currentUserId]);
-  
-  const allPlayersReady = useMemo(() => players.length > 0 && players.every(p => p.isReady), [players]);
+    if (!currentUserId || players.length === 0) return null
+    const user = players.find((p) => p.id === currentUserId)
+    return user || null
+  }, [players, currentUserId])
+
+  const allPlayersReady = useMemo(() => players.length > 0 && players.every((p) => p.isReady), [players])
+
+  const isHost = useMemo(() => currentUser?.isHost || false, [currentUser])
 
   // --- WEBSOCKET & COUNTDOWN LOGIC ---
   useEffect(() => {
-    if (wsStatus === 'open' && lobbyId) {
-      // Try to get userId from localStorage
-      const storedId = localStorage.getItem('userId');
+    if (wsStatus === "open" && lobbyId) {
+      const storedId = localStorage.getItem("userId")
       if (storedId) {
-        setCurrentUserId(storedId);
+        setCurrentUserId(storedId)
       }
-      
-      // Request lobby members
-      sendMessage({ type: 'get_lobby_members', code: lobbyId });
+      sendMessage({ type: "get_lobby_members", code: lobbyId })
     }
-  }, [wsStatus, lobbyId, sendMessage]);
+  }, [wsStatus, lobbyId, sendMessage])
 
   useEffect(() => {
-    if (!lastMessage) return;
+    if (!lastMessage) return
+
     try {
-      const msg = JSON.parse(lastMessage);
-      if (msg.type === 'lobby_members' && msg.code === lobbyId) {
-        setPlayers(msg.members.map(p => ({
-          id: p.userId,
-          name: p.username || `Player ${p.userId.substring(0, 4)}`,
-          isReady: !!p.isReady
-        })));
-        // Set currentUserId if not already set and userId is present in the list
+      const msg = JSON.parse(lastMessage)
+      if (msg.type === "lobby_members" && msg.code === lobbyId) {
+        setPlayers(
+          msg.members.map((p) => ({
+            id: p.userId,
+            name: p.username || `Player ${p.userId.substring(0, 4)}`,
+            isReady: !!p.isReady,
+            isHost: !!p.isHost,
+          })),
+        )
+
         if (!currentUserId && msg.members.length > 0) {
-          // Try to find the userId from a unique identifier (e.g., from localStorage or a welcome message)
-          const storedId = localStorage.getItem('userId');
-          if (storedId && msg.members.some(m => m.userId === storedId)) {
-            setCurrentUserId(storedId);
+          const storedId = localStorage.getItem("userId")
+          if (storedId && msg.members.some((m) => m.userId === storedId)) {
+            setCurrentUserId(storedId)
           }
         }
       }
-      // Also update players on lobby_state_update (for ready state changes)
-      if (msg.type === 'lobby_state_update') {
-        setPlayers(msg.players.map(p => ({
-          id: p.userId || p.id,
-          name: p.username || `Player ${(p.userId || p.id)?.substring(0, 4)}`,
-          isReady: !!p.isReady
-        })));
-        setLobbyName(msg.lobbyName);
-        setCurrentUserId(msg.currentUserId);
-      } else if (msg.type === 'game_start_countdown') {
-        setIsStarting(true);
-        setCountdown(msg.countdown);
-      } else if (msg.type === 'game_started') {
-        navigate(`/game/${lobbyId}`);
+
+      if (msg.type === "lobby_state_update") {
+        setPlayers(
+          msg.players.map((p) => ({
+            id: p.userId || p.id,
+            name: p.username || `Player ${(p.userId || p.id)?.substring(0, 4)}`,
+            isReady: !!p.isReady,
+            isHost: !!p.isHost,
+          })),
+        )
+        setLobbyName(msg.lobbyName)
+        setCurrentUserId(msg.currentUserId)
+      } else if (msg.type === "game_start_countdown") {
+        setIsStarting(true)
+        setCountdown(msg.countdown)
+      } else if (msg.type === "game_started") {
+        navigate(`/game/${lobbyId}`)
       }
     } catch (e) {
-      console.error("Failed to parse WebSocket message:", e);
+      console.error("Failed to parse WebSocket message:", e)
     }
-  }, [lastMessage, lobbyId, navigate]);
-
+  }, [lastMessage, lobbyId, navigate, currentUserId])
 
   useEffect(() => {
-    let timerId;
+    let timerId
     if (isStarting && countdown > 0) {
-      timerId = setInterval(() => setCountdown(prev => prev - 1), 1000);
+      timerId = setInterval(() => setCountdown((prev) => prev - 1), 1000)
     } else if (isStarting && countdown === 0) {
-      navigate(`/game/${lobbyId}`);
+      navigate(`/game/${lobbyId}`)
     }
-    return () => clearInterval(timerId);
-  }, [isStarting, countdown, lobbyId, navigate]);
+    return () => clearInterval(timerId)
+  }, [isStarting, countdown, lobbyId, navigate])
 
-  // --- EVENT HANDLERS (to be passed down as props) ---
+  // --- EVENT HANDLERS ---
   const handleReadyToggle = () => {
-    // This should ideally send a message to the WebSocket to update readiness on the server
-    // For now, we'll simulate the local update.
-    setPlayers(players.map(p => p.id === currentUserId ? { ...p, isReady: !p.isReady } : p));
-  };
+    // Send WebSocket message to update ready status
+    sendMessage({
+      type: "toggle_ready",
+      code: lobbyId,
+      userId: currentUserId,
+    })
+
+    // Update local state immediately for responsive UI
+    setPlayers(players.map((p) => (p.id === currentUserId ? { ...p, isReady: !p.isReady } : p)))
+  }
 
   const handleNameChange = (newName) => {
-    // This should ideally send a message to the WebSocket to update name on the server
-    // For now, we'll simulate the local update.
-    setPlayers(players.map(p => p.id === currentUserId ? { ...p, name: newName } : p));
-  };
+    // Send WebSocket message to update username
+    sendMessage({
+      type: "update_username",
+      code: lobbyId,
+      userId: currentUserId,
+      username: newName,
+    })
+
+    // Update local state immediately for responsive UI
+    setPlayers(players.map((p) => (p.id === currentUserId ? { ...p, name: newName } : p)))
+  }
 
   const handleStart = () => {
-    if (allPlayersReady) {
-      setIsStarting(true);
-      setCountdown(3); // Set countdown to 3 seconds instead of 30
-      // Ideally, send a 'start_game' message to the WebSocket here
+    if (allPlayersReady && isHost) {
+      // Send WebSocket message to start game
+      sendMessage({
+        type: "start_game",
+        code: lobbyId,
+      })
+
+      setIsStarting(true)
+      setCountdown(3)
     }
-  };
+  }
 
   const handleCancel = () => {
-    setIsStarting(false);
-    // Ideally, send a 'cancel_start' message to the WebSocket here
-  };
+    // Send WebSocket message to cancel game start
+    sendMessage({
+      type: "cancel_start",
+      code: lobbyId,
+    })
+
+    setIsStarting(false)
+  }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-900 text-white">
-      <Header title={lobbyName} showBackButton={!isStarting} />
+    <div className="min-h-screen bg-gradient-to-br from-[#0f051d] via-[#1f152b] to-[#0f051d] relative overflow-hidden">
+      <BackgroundDecorations />
 
-      {/* LOBBY CODE AT TOP */}
-      <div className="mx-auto mt-4 w-full max-w-2xl text-center">
-        <div className="inline-block rounded bg-gray-800/80 px-4 py-2 text-lg font-mono font-semibold text-blue-300 shadow">
-          Lobby Code: <span className="text-white">{lobbyId?.toUpperCase()}</span>
+      {/* HBlast Header */}
+      <header className="flex justify-between items-center py-4 md:py-6 relative z-10 px-4 md:px-6 lg:px-8">
+        <div className="flex items-center gap-4">
+          {!isStarting && (
+            <button
+              onClick={() => navigate("/lobby")}
+              className="text-white hover:text-[#e971ff] transition-colors p-2 rounded-full hover:bg-white/10"
+            >
+              <ArrowLeft size={24} />
+            </button>
+          )}
+          <div className="text-white text-xl md:text-2xl font-bold">HBlast</div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-[#b7b4bb] text-sm md:text-base">{lobbyName}</div>
+          <div className="w-8 h-8 md:w-10 md:h-10">
+            <img src="/images/icon.png" alt="HBlast Score Icon" className="w-full h-full object-contain" />
+          </div>
+        </div>
+      </header>
+
+      {/* Lobby Code Display */}
+      <div className="text-center mb-6 px-4 relative z-10">
+        <div className="inline-block bg-gradient-to-r from-[#1f152b] to-[#0f051d] border border-[#9351f7]/40 rounded-xl px-4 py-2 shadow-lg">
+          <span className="text-sm text-[#b7b4bb]">Lobby Code: </span>
+          <span className="text-lg font-mono font-bold text-[#e971ff]">{lobbyId?.toUpperCase()}</span>
         </div>
       </div>
 
-      <main className="flex flex-grow flex-col justify-center p-4 md:p-6">
+      <main className="flex-grow flex flex-col justify-center p-4 md:p-6 relative z-10">
         <div className="mx-auto w-full max-w-2xl">
-          {/* If the user is already loaded and we're not waiting for their player data */}
-          {currentUser && (
+          {currentUser && isHost && (
+            <HostWaitlistPage
+              lobbyId={lobbyId}
+              players={players}
+              currentUser={currentUser}
+              allPlayersReady={allPlayersReady}
+              isStarting={isStarting}
+              countdown={countdown}
+              onStart={handleStart}
+              onCancel={handleCancel}
+              onReadyToggle={handleReadyToggle}
+              onNameChange={handleNameChange}
+            />
+          )}
+
+          {currentUser && !isHost && (
             <PlayerWaitlistPage
               players={players}
               currentUser={currentUser}
@@ -147,33 +213,33 @@ const WaitlistPage = () => {
             />
           )}
 
-          {/* If the user is not yet loaded or we're still waiting for player data */}
           {!currentUser && !isStarting && (
-            <div className="text-center text-gray-400">
-              Loading player data...
-            </div>
-          )}
-
-          {/* COUNTDOWN IF STARTING */}
-          {isStarting && (
-            <div className="mb-6 text-center text-2xl font-bold text-blue-400">
-              Game starting in {countdown}...
+            <div className="text-center">
+              <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-2xl p-8 border border-[#2a3441]/30">
+                <div className="w-8 h-8 border-2 border-[#e971ff] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-[#b7b4bb]">Loading player data...</p>
+              </div>
             </div>
           )}
         </div>
       </main>
 
       {!isStarting && (
-         <footer className="p-4">
-            <div className="mx-auto max-w-md">
-              <Button onClick={() => navigate('/lobby')} className="flex items-center justify-center gap-2 bg-red-800/80 font-normal normal-case tracking-normal hover:bg-red-700/80">
-                <LogOut size={20} /><span>Leave Lobby</span>
-              </Button>
-            </div>
+        <footer className="p-4 relative z-10">
+          <div className="mx-auto max-w-md">
+            <Button
+              onClick={() => navigate("/lobby")}
+              variant="outline"
+              className="flex items-center justify-center gap-2 border-red-500 text-red-400 hover:bg-red-500 hover:text-white"
+            >
+              <LogOut size={20} />
+              <span>Leave Lobby</span>
+            </Button>
+          </div>
         </footer>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default WaitlistPage;
+export default WaitlistPage

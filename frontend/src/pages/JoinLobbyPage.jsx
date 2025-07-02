@@ -1,97 +1,185 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
-import Button from '../components/Button';
-import Input from '../components/Input';
-import { Hash, LogIn, User } from 'lucide-react'; // Import User icon
-import { useWebSocket } from '../WebSocketContext';
+"use client"
+
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { ArrowLeft, Hash, LogIn, User, Zap } from "lucide-react"
+import { useWebSocket } from "../WebSocketContext"
+import BackgroundDecorations from "../components/BackgroundDecorations"
+import Button from "../components/Button"
+import Input from "../components/Input"
 
 /**
- * A focused page for players to join a private lobby using a specific code.
- * The layout is a simple vertical stack for all screen sizes.
+ * A focused page for players to join a private lobby using a specific code with HBlast design.
  */
-const JoinLobbyPage = () => {
-  const [lobbyCode, setLobbyCode] = useState('');
-  const [username, setUsername] = useState(''); // New state for username
-  const navigate = useNavigate();
-  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+function JoinLobbyPage() {
+  const [lobbyCode, setLobbyCode] = useState("")
+  const [username, setUsername] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const navigate = useNavigate()
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket()
 
-  React.useEffect(() => {
-    if (!lastMessage) return;
+  useEffect(() => {
+    if (!lastMessage) return
+
     try {
-      const msg = JSON.parse(lastMessage);
-      console.log(msg);
-      if (msg.type === 'lobby_joined') {
+      const msg = JSON.parse(lastMessage)
+      console.log(msg)
 
-        // Use the code from the message, or fallback to the entered code
-        const code = msg.code || lobbyCode.trim().toUpperCase();
-        navigate(`/lobby/${code}/waitlist`);
-      } else if (msg.type === 'lobby_error') {
-        alert(msg.message || 'Failed to join lobby.');
+      if (msg.type === "lobby_joined") {
+        setIsLoading(false)
+        const code = msg.code || lobbyCode.trim().toUpperCase()
+        navigate(`/lobby/${code}/waitlist`)
+      } else if (msg.type === "lobby_error") {
+        setIsLoading(false)
+        alert(msg.message || "Failed to join lobby.")
       }
-    } catch (e) {}
-  }, [lastMessage, navigate, lobbyCode]);
+    } catch (e) {
+      setIsLoading(false)
+    }
+  }, [lastMessage, navigate, lobbyCode])
 
   const handleJoinByCode = () => {
-    if (lobbyCode.trim() === '') {
-      alert('Please enter a lobby code to join.');
-      return;
+    if (lobbyCode.trim() === "") {
+      alert("Please enter a lobby code to join.")
+      return
     }
-    if (username.trim() === '') { // Validate username
-      alert('Please enter your username.');
-      return;
+
+    if (username.trim() === "") {
+      alert("Please enter your username.")
+      return
     }
-    if (wsStatus !== 'open') {
-      alert('WebSocket not connected.');
-      return;
+
+    if (wsStatus !== "open") {
+      alert("WebSocket not connected.")
+      return
     }
+
+    setIsLoading(true)
     sendMessage({
-      type: 'join_lobby',
+      type: "join_lobby",
       code: lobbyCode.trim().toUpperCase(),
-      username: username.trim(), // Send username
-      role: 'player' // Ensure role is set to player
-    });
-  };
+      username: username.trim(),
+      role: "player",
+    })
+  }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-900 text-white">
-      <Header title="Join Private Lobby" showBackButton />
+    <div className="min-h-screen bg-gradient-to-br from-[#0f051d] via-[#1f152b] to-[#0f051d] relative overflow-hidden">
+      <BackgroundDecorations />
 
-      <main className="flex flex-grow flex-col items-center justify-center p-4">
-        <div className="w-full max-w-sm space-y-8 text-center">
-          {/* Informational Header */}
-          <div className="flex flex-col items-center gap-2">
-            <Hash size={40} className="text-indigo-400" />
-            <h2 className="text-3xl font-bold md:text-4xl">Enter Lobby</h2>
-            <p className="text-gray-400">
-              Enter the code provided by the lobby host as well as your username.
+      {/* HBlast Header */}
+      <header className="flex justify-between items-center py-4 md:py-6 relative z-10 px-4 md:px-6 lg:px-8">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/lobby")}
+            className="text-white hover:text-[#e971ff] transition-colors p-2 rounded-full hover:bg-white/10"
+          >
+            <ArrowLeft size={24} />
+          </button>
+          <div className="text-white text-xl md:text-2xl font-bold">HBlast</div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-[#b7b4bb] text-sm md:text-base">Join Lobby</div>
+          <div className="w-8 h-8 md:w-10 md:h-10">
+            <img src="/images/icon.png" alt="HBlast Score Icon" className="w-full h-full object-contain" />
+          </div>
+        </div>
+      </header>
+
+      <main className="flex flex-grow flex-col items-center justify-center p-4 md:p-6 relative z-10 min-h-[calc(100vh-120px)]">
+        <div className="w-full max-w-md">
+          {/* Hero Section */}
+          <div className="text-center mb-8 md:mb-12">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-[#741ff5] to-[#9351f7] rounded-full flex items-center justify-center">
+              <Hash size={32} className="text-white" />
+            </div>
+            <h1 className="text-white text-3xl md:text-4xl font-bold mb-4">
+              <span className="block">Join the</span>
+              <span className="block">Battle</span>
+            </h1>
+            <p className="text-[#b7b4bb] text-base md:text-lg">
+              Enter the lobby code and your username to join the action
             </p>
           </div>
 
-          {/* Input Form */}
-          <form onSubmit={(e) => { e.preventDefault(); handleJoinByCode(); }} className="w-full space-y-3">
-             {/* Username Input */}
-            <Input
-              placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              icon={<User size={20} className="text-gray-400" />} // Optional: Add a user icon
-            />
-            <Input
-              placeholder="ABCDEF"
-              value={lobbyCode}
-              // Automatically convert input to uppercase for consistency
-              onChange={(e) => setLobbyCode(e.target.value.toUpperCase())}
-            />
-            <Button type="submit" className="flex items-center justify-center gap-2">
-              <LogIn size={20} />
-              <span>Join</span>
-            </Button>
-          </form>
+          {/* Join Form */}
+          <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-2xl p-6 md:p-8 border-2 border-[#9351f7]/40 shadow-xl mb-6">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleJoinByCode()
+              }}
+              className="space-y-6"
+            >
+              {/* Username Input */}
+              <div>
+                <label className="block text-sm text-[#b7b4bb] mb-2 flex items-center gap-2">
+                  <User size={16} className="text-[#e971ff]" />
+                  Your Username
+                </label>
+                <Input
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Lobby Code Input */}
+              <div>
+                <label className="block text-sm text-[#b7b4bb] mb-2 flex items-center gap-2">
+                  <Hash size={16} className="text-[#e971ff]" />
+                  Lobby Code
+                </label>
+                <Input
+                  placeholder="ABCDEF"
+                  value={lobbyCode}
+                  onChange={(e) => setLobbyCode(e.target.value.toUpperCase())}
+                  disabled={isLoading}
+                  className="font-mono text-center text-lg tracking-widest"
+                />
+                <p className="text-xs text-[#b7b4bb] mt-2">Ask the host for the 6-character lobby code</p>
+              </div>
+
+              {/* Join Button */}
+              <Button
+                type="submit"
+                disabled={isLoading || !lobbyCode.trim() || !username.trim()}
+                className={`flex items-center justify-center gap-2 ${
+                  isLoading
+                    ? "bg-gradient-to-r from-[#7b7583] to-[#838383] cursor-not-allowed"
+                    : "bg-gradient-to-r from-[#741ff5] to-[#9351f7] hover:from-[#9351f7] hover:to-[#e971ff]"
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Joining...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn size={20} />
+                    <span>Join Lobby</span>
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+
+          {/* Connection Status */}
+          <div className="bg-gradient-to-r from-[#1f152b] to-[#0f051d] rounded-xl p-3 md:p-4 border border-[#2a3441]/30 flex items-center gap-3">
+            <div
+              className={`w-2 h-2 rounded-full ${wsStatus === "open" ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
+            ></div>
+            <span className="text-white text-sm font-medium">
+              {wsStatus === "open" ? "Connected to Game Network" : "Connecting..."}
+            </span>
+            {wsStatus === "open" && <Zap size={16} className="text-[#e971ff] ml-auto" />}
+          </div>
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default JoinLobbyPage;
+export default JoinLobbyPage

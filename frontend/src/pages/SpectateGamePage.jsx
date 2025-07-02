@@ -1,120 +1,157 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
-import Header from '../components/Header';
-import Leaderboard from '../components/Leaderboard';
-import { Skull } from 'lucide-react'; // Icon for killed players
+"use client"
+
+import { useState, useEffect } from "react"
+import { useParams, useNavigate } from "react-router-dom"
+import Leaderboard from "../components/Leaderboard"
+import BackgroundDecorations from "../components/BackgroundDecorations"
+import { ArrowLeft, Zap, Target, Timer, Users, Trophy, Activity } from "lucide-react"
 
 // --- DUMMY DATA ---
-// Added an `isAlive` property to simulate game state.
 const dummyPlayers = [
-  { id: 'p1', name: 'PlayerOne', score: 1500, isAlive: true },
-  { id: 'p2', name: 'PlayerTwo', score: 1250, isAlive: true },
-  { id: 'p3', name: 'PlayerThree', score: 900, isAlive: false }, // This player is "killed"
-  { id: 'p4', name: 'PlayerFour', score: 750, isAlive: true },
-];
+  { id: "p1", name: "PlayerOne", score: 1500, hits: 45, accuracy: 78, streak: 12 },
+  { id: "p2", name: "PlayerTwo", score: 1250, hits: 38, accuracy: 65, streak: 8 },
+  { id: "p3", name: "PlayerThree", score: 900, hits: 28, accuracy: 52, streak: 5 },
+  { id: "p4", name: "PlayerFour", score: 750, hits: 22, accuracy: 48, streak: 3 },
+  { id: "p5", name: "PlayerFive", score: 650, hits: 19, accuracy: 41, streak: 2 },
+  { id: "p6", name: "PlayerSix", score: 580, hits: 17, accuracy: 38, streak: 1 },
+]
+
+const gameStats = {
+  duration: "12:34",
+  totalHits: 169,
+  averageAccuracy: 54,
+  gameMode: "Team Deathmatch",
+}
 
 /**
- * A mobile-first, responsive page for spectating a game.
- * It displays a live camera feed and handles the "killed" state for players.
+ * A spectate page focused on displaying an awesome laser tag leaderboard
  */
-const SpectateGamePage = () => {
-  const { lobbyId } = useParams();
-  const [players, setPlayers] = useState(dummyPlayers);
-  const [spectatingPlayer, setSpectatingPlayer] = useState(dummyPlayers[0]);
-  const videoRef = useRef(null);
+function SpectateGamePage() {
+  const { lobbyId } = useParams()
+  const navigate = useNavigate()
+  const [players, setPlayers] = useState(dummyPlayers)
+  const [gameTime, setGameTime] = useState(gameStats.duration)
 
-  // Effect to manage the camera stream based on the spectated player's status
+  // Simulate live updates
   useEffect(() => {
-    const videoElement = videoRef.current;
-    let stream = null;
+    const interval = setInterval(() => {
+      setPlayers((prevPlayers) =>
+        prevPlayers.map((player) => ({
+          ...player,
+          score: player.score + Math.floor(Math.random() * 50),
+          hits: player.hits + Math.floor(Math.random() * 2),
+        })),
+      )
+    }, 3000)
 
-    const startStream = async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        if (videoElement) videoElement.srcObject = stream;
-      } catch (err) {
-        console.error("Camera Error:", err);
-        alert("Could not access camera. Please grant permission.");
-      }
-    };
-
-    const stopStream = () => {
-      if (videoElement && videoElement.srcObject) {
-        videoElement.srcObject.getTracks().forEach(track => track.stop());
-        videoElement.srcObject = null;
-      }
-    };
-
-    if (spectatingPlayer.isAlive) {
-      startStream();
-    } else {
-      stopStream();
-    }
-
-    // Cleanup function to stop the stream when the component unmounts or the player changes
-    return () => {
-      stopStream();
-    };
-  }, [spectatingPlayer]); // This effect re-runs whenever the spectatingPlayer changes
-
-  const handleSelectPlayer = (player) => {
-    setSpectatingPlayer(player);
-  };
+    return () => clearInterval(interval)
+  }, [])
 
   return (
-    <div className="flex h-screen flex-col bg-gray-900 text-white">
-      <Header title={`Spectating: Game ${lobbyId}`} showBackButton />
-      
-      <div className="flex flex-grow flex-col overflow-hidden md:flex-row">
-        {/* Main Content: Player View */}
-        <main className="relative flex flex-grow items-center justify-center bg-black md:w-3/4">
-          {spectatingPlayer.isAlive ? (
-            <video ref={videoRef} className="h-full w-full object-cover" autoPlay playsInline muted />
-          ) : (
-            <div className="flex flex-col items-center gap-4 text-gray-500">
-              <Skull size={64} />
-              <h2 className="text-2xl font-bold">Player Eliminated</h2>
-            </div>
-          )}
-          <div className="absolute bottom-0 left-0 w-full bg-black/50 p-2 text-center text-lg font-bold">
-             Spectating: {spectatingPlayer.name}
-          </div>
-        </main>
+    <div className="min-h-screen bg-gradient-to-br from-[#0f051d] via-[#1f152b] to-[#0f051d] relative overflow-hidden">
+      <BackgroundDecorations />
 
-        {/* Sidebar/Bottom bar for controls */}
-        <aside className="flex flex-col space-y-4 overflow-y-auto bg-gray-900 p-4 md:w-1/4">
-          <Leaderboard players={players} />
-          
-          <div>
-            <h3 className="mb-3 text-lg font-bold">Switch Perspective</h3>
-            {/* On mobile, this is a horizontal scrollable list. On desktop, it's a vertical list. */}
-            <div className="flex gap-2 overflow-x-auto pb-2 md:flex-col md:overflow-x-visible">
-              {players.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => handleSelectPlayer(p)}
-                  disabled={!p.isAlive} // Disable button if player is not alive
-                  className={`
-                    flex w-full min-w-[120px] flex-col items-center justify-center rounded-md p-3 text-center text-sm font-semibold transition-colors
-                    ${spectatingPlayer.id === p.id ? 'bg-indigo-600 ring-2 ring-indigo-400' : 'bg-white/10'}
-                    ${p.isAlive ? 'hover:bg-white/20' : 'opacity-50 cursor-not-allowed'}
-                  `}
-                >
-                  {p.name}
-                  {!p.isAlive && (
-                    <div className="mt-1 flex items-center gap-1 text-xs text-red-400">
-                      <Skull size={14} />
-                      <span>Killed</span>
-                    </div>
-                  )}
-                </button>
-              ))}
+      {/* HBlast Header */}
+      <header className="flex justify-between items-center py-4 md:py-6 relative z-10 px-4 md:px-6 lg:px-8">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/")}
+            className="text-white hover:text-[#e971ff] transition-colors p-2 rounded-full hover:bg-white/10"
+          >
+            <ArrowLeft size={24} />
+          </button>
+          <div className="text-white text-xl md:text-2xl font-bold">HBlast</div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-[#b7b4bb] text-sm md:text-base">Live Match</div>
+          <div className="w-8 h-8 md:w-10 md:h-10">
+            <img src="/images/icon.png" alt="HBlast Score Icon" className="w-full h-full object-contain" />
+          </div>
+        </div>
+      </header>
+
+      <div className="px-4 md:px-6 lg:px-8 pb-6 relative z-10">
+        {/* Game Status Header */}
+        <div className="mb-6 md:mb-8">
+          <div className="text-center mb-6">
+            <h1 className="text-white text-3xl md:text-4xl lg:text-5xl font-bold mb-2">Live Match Spectator</h1>
+            <p className="text-[#b7b4bb] text-lg md:text-xl">Watch the action unfold in real-time</p>
+          </div>
+
+          {/* Game Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+            <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-xl p-4 border border-[#2a3441]/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Timer size={20} className="text-[#e971ff]" />
+                <span className="text-[#b7b4bb] text-sm">Duration</span>
+              </div>
+              <div className="text-white text-xl md:text-2xl font-bold">{gameTime}</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-xl p-4 border border-[#2a3441]/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Target size={20} className="text-[#e971ff]" />
+                <span className="text-[#b7b4bb] text-sm">Total Hits</span>
+              </div>
+              <div className="text-white text-xl md:text-2xl font-bold">{gameStats.totalHits}</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-xl p-4 border border-[#2a3441]/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity size={20} className="text-[#e971ff]" />
+                <span className="text-[#b7b4bb] text-sm">Avg Accuracy</span>
+              </div>
+              <div className="text-white text-xl md:text-2xl font-bold">{gameStats.averageAccuracy}%</div>
+            </div>
+
+            <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-xl p-4 border border-[#2a3441]/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Users size={20} className="text-[#e971ff]" />
+                <span className="text-[#b7b4bb] text-sm">Players</span>
+              </div>
+              <div className="text-white text-xl md:text-2xl font-bold">{players.length}</div>
             </div>
           </div>
-        </aside>
+        </div>
+
+        {/* Main Leaderboard */}
+        <div className="max-w-4xl mx-auto">
+          <Leaderboard players={players} showDetailedStats={true} />
+        </div>
+
+        {/* Live Activity Feed */}
+        <div className="max-w-4xl mx-auto mt-6 md:mt-8">
+          <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-2xl p-4 md:p-6 border border-[#2a3441]/30 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <Zap size={24} className="text-[#e971ff]" />
+              <h3 className="text-white text-lg md:text-xl font-bold">Live Activity</h3>
+              <div className="w-2 h-2 bg-[#e971ff] rounded-full animate-pulse ml-auto"></div>
+            </div>
+
+            <div className="space-y-3 max-h-48 overflow-y-auto">
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-[#741ff5]/20 to-transparent rounded-lg">
+                <Target size={16} className="text-[#e971ff]" />
+                <span className="text-white text-sm">PlayerOne scored a hit! +50 points</span>
+                <span className="text-[#b7b4bb] text-xs ml-auto">2s ago</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-[#9351f7]/20 to-transparent rounded-lg">
+                <Zap size={16} className="text-[#e971ff]" />
+                <span className="text-white text-sm">PlayerTwo on a 8-hit streak!</span>
+                <span className="text-[#b7b4bb] text-xs ml-auto">5s ago</span>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-[#741ff5]/20 to-transparent rounded-lg">
+                <Trophy size={16} className="text-[#e971ff]" />
+                <span className="text-white text-sm">PlayerThree takes 3rd place!</span>
+                <span className="text-[#b7b4bb] text-xs ml-auto">8s ago</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SpectateGamePage;
+export default SpectateGamePage

@@ -1,127 +1,172 @@
-import React, { useState, useEffect } from 'react'; // Import useEffect
-import { Crown, CheckCircle2, XCircle, Pencil } from 'lucide-react';
-import Button from '../components/Button';
-import Input from '../components/Input';
-import { useWebSocket } from '../WebSocketContext';
+"use client"
+
+import { useState } from "react"
+import { Crown, CheckCircle2, XCircle, Edit3, Save, Users } from "lucide-react"
+import Button from "../components/Button"
+import Input from "../components/Input"
 
 /**
- * The waitlist view specifically for a non-host player.
+ * The waitlist view for regular players with HBlast design.
  */
-const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) => {
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [nameInputValue, setNameInputValue] = useState('');
-  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+function PlayerWaitlistPage({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) {
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [tempName, setTempName] = useState(currentUser?.name || "")
 
-  useEffect(() => {
-    if (currentUser) {
-      setNameInputValue(currentUser.name);
+  const handleNameSave = () => {
+    if (tempName.trim()) {
+      onNameChange(tempName.trim())
+      setIsEditingName(false)
     }
-  }, [currentUser]);
+  }
 
-  const handleEditName = () => {
-    if (currentUser) { // Ensure currentUser exists before setting input value
-      setNameInputValue(currentUser.name);
-      setIsEditingName(true);
-    }
-  };
-
-  const handleSaveName = () => {
-    if (nameInputValue.trim() !== '') {
-      onNameChange(nameInputValue.trim());
-      setIsEditingName(false);
-    }
-  };
-  
-  // Function to handle ready toggle with WebSocket
-  const handleReadyToggle = () => {
-    if (currentUser && lobbyCode) {
-      sendMessage({ 
-        type: 'set_ready', 
-        code: lobbyCode,
-        ready: !currentUser.isReady 
-      });
-    } else {
-      // Fall back to the passed onReadyToggle if no WebSocket or missing data
-      onReadyToggle();
-    }
-  };
-
-  if (!currentUser && !isStarting) { // Added a check for currentUser to prevent rendering issues before data loads
-    return (
-      <div className="text-center text-gray-400">
-        Loading player data...
-      </div>
-    );
+  const handleNameCancel = () => {
+    setTempName(currentUser?.name || "")
+    setIsEditingName(false)
   }
 
   if (isStarting) {
     return (
       <div className="text-center">
-        <div className="relative mx-auto h-32 w-32">
-            <svg className="h-full w-full" viewBox="0 0 100 100">
-                <circle className="stroke-current text-gray-700" strokeWidth="10" cx="50" cy="50" r="40" fill="transparent"></circle>
-                <circle
-                    className="stroke-current text-indigo-500 transition-all duration-1000 linear"
-                    strokeWidth="10"
-                    strokeDasharray="251.2"
-                    strokeDashoffset={251.2 - (countdown / 3) * 251.2}
-                    strokeLinecap="round"
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="transparent"
-                    transform="rotate(-90 50 50)"
-                ></circle>
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center text-4xl font-bold">{countdown}</div>
+        <div className="relative mx-auto h-32 w-32 mb-6">
+          <svg className="h-full w-full transform -rotate-90" viewBox="0 0 100 100">
+            <circle className="stroke-[#2a3441]" strokeWidth="8" cx="50" cy="50" r="40" fill="transparent" />
+            <circle
+              className="stroke-[#e971ff] transition-all duration-1000 linear"
+              strokeWidth="8"
+              strokeDasharray="251.2"
+              strokeDashoffset={251.2 - (countdown / 3) * 251.2}
+              strokeLinecap="round"
+              cx="50"
+              cy="50"
+              r="40"
+              fill="transparent"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-4xl md:text-5xl font-bold text-white">{countdown}</span>
+          </div>
         </div>
-        <h3 className="mt-4 text-2xl font-bold">Game Starting...</h3>
-        <p className="text-gray-400">Get ready!</p>
+
+        <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">Game Starting...</h3>
+        <p className="text-[#b7b4bb] mb-4">Get ready for battle!</p>
+        <p className="text-sm text-[#b7b4bb]">Prepare your laser tag gear!</p>
       </div>
-    );
+    )
   }
 
   return (
-    <>
-      <div className="space-y-3 rounded-lg bg-gray-800 p-4">
-        {players.map(player => (
-          <div key={player.id} className="flex items-center justify-between rounded-md bg-white/5 p-3">
-            <div className="flex items-center gap-3">
-              {player.isHost && <Crown size={20} className="text-yellow-400" />}
-              {isEditingName && player.id === currentUser.id ? (
-                <Input value={nameInputValue} onChange={(e) => setNameInputValue(e.target.value)} />
-              ) : (
-                <span className="font-semibold">{player.name} {player.id === currentUser.id && '(You)'}</span>
-              )}
-            </div>
-            <span className={`flex items-center gap-2 text-sm ${player.isReady ? 'text-green-400' : 'text-red-400'}`}>
-              {player.isReady ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-              {player.isReady ? 'Ready' : 'Not Ready'}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-6 space-y-3">
-        {isEditingName ? (
-          <>
-            <Button onClick={handleSaveName} className="bg-green-600 hover:bg-green-700">Save Name</Button>
-            <Button onClick={() => setIsEditingName(false)} className="bg-gray-600 hover:bg-gray-700">Cancel</Button>
-          </>
-        ) : (
-          <>
-            <Button onClick={handleReadyToggle} disabled={isEditingName} className={`flex items-center justify-center gap-2 ${currentUser?.isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}`}>
-              {currentUser?.isReady ? <XCircle size={20} /> : <CheckCircle2 size={20} />}
-              <span>{currentUser?.isReady ? 'Set to Not Ready' : 'Ready Up'}</span>
-            </Button>
-            <Button onClick={handleEditName} className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700">
-              <Pencil size={18} />
-              <span>Edit Name</span>
-            </Button>
-          </>
-        )}
-      </div>
-    </>
-  );
-};
+    <div className="space-y-6">
+      {/* Player Profile Section */}
+      <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-2xl p-4 md:p-6 border-2 border-[#9351f7]/40 shadow-xl">
+        <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <Users size={20} className="text-[#e971ff]" />
+          Your Profile
+        </h3>
 
-export default PlayerWaitlistPage;
+        <div className="space-y-4">
+          {/* Name Section */}
+          <div>
+            <label className="block text-sm text-[#b7b4bb] mb-2">Player Name</label>
+            {isEditingName ? (
+              <div className="flex gap-2">
+                <Input
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleNameSave}
+                  size="small"
+                  className="px-3 bg-gradient-to-r from-[#741ff5] to-[#9351f7]"
+                >
+                  <Save size={16} />
+                </Button>
+                <Button onClick={handleNameCancel} size="small" variant="outline" className="px-3 bg-transparent">
+                  ✕
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between bg-gradient-to-r from-[#2a3441]/30 to-transparent rounded-xl p-3 border border-[#2a3441]/20">
+                <span className="font-semibold text-white">{currentUser?.name}</span>
+                <button
+                  onClick={() => {
+                    setTempName(currentUser?.name || "")
+                    setIsEditingName(true)
+                  }}
+                  className="text-[#b7b4bb] hover:text-[#e971ff] transition-colors p-1"
+                >
+                  <Edit3 size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Ready Status */}
+          <div>
+            <label className="block text-sm text-[#b7b4bb] mb-2">Ready Status</label>
+            <Button
+              onClick={onReadyToggle}
+              className={`flex items-center justify-center gap-2 ${
+                currentUser?.isReady
+                  ? "bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400"
+                  : "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400"
+              }`}
+            >
+              {currentUser?.isReady ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+              <span>{currentUser?.isReady ? "Ready!" : "Not Ready"}</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* All Players List */}
+      <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-2xl p-4 md:p-6 border border-[#2a3441]/30 shadow-xl">
+        <h3 className="text-lg md:text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <Crown size={20} className="text-[#e971ff]" />
+          All Players ({players.length})
+        </h3>
+
+        <div className="space-y-3">
+          {players.map((player) => (
+            <div
+              key={player.id}
+              className={`flex items-center justify-between rounded-xl p-3 md:p-4 border transition-all duration-200 ${
+                player.id === currentUser?.id
+                  ? "bg-gradient-to-r from-[#9351f7]/20 to-[#e971ff]/10 border-[#9351f7]/40"
+                  : "bg-gradient-to-r from-[#2a3441]/30 to-transparent border-[#2a3441]/20"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {player.isHost && <Crown size={18} className="text-yellow-400" />}
+                <span className="font-semibold text-white text-sm md:text-base">{player.name}</span>
+                {player.id === currentUser?.id && (
+                  <span className="text-xs bg-[#e971ff]/20 text-[#e971ff] px-2 py-1 rounded-full">You</span>
+                )}
+                {player.isHost && (
+                  <span className="text-xs bg-yellow-400/20 text-yellow-400 px-2 py-1 rounded-full">Host</span>
+                )}
+              </div>
+              <div className={`flex items-center gap-2 text-sm ${player.isReady ? "text-green-400" : "text-red-400"}`}>
+                {player.isReady ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                <span className="hidden sm:inline">{player.isReady ? "Ready" : "Not Ready"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Game Status */}
+      <div className="text-center">
+        <div className="bg-gradient-to-r from-[#1f152b] to-[#0f051d] rounded-xl p-4 border border-[#2a3441]/30">
+          <p className="text-[#b7b4bb] text-sm mb-2">Waiting for host to start the game</p>
+          <p className="text-white font-semibold">
+            {players.filter((p) => p.isReady).length} of {players.length} players ready
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default PlayerWaitlistPage
