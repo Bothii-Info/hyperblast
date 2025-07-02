@@ -272,6 +272,22 @@ wss.on('connection', function connection(ws) {
                 break;
             }
 
+            case 'get_lobby_members': {
+                const code = data.code || player.lobbyCode;
+                if (lobbies[code]) {
+                    const memberList = lobbies[code].players.map(uid => ({
+                        userId: uid,
+                        username: players[uid]?.username || null,
+                        isHost: lobbies[code].host === uid,
+                        isReady: players[uid]?.ready || false
+                    }));
+                    ws.send(JSON.stringify({ type: 'lobby_members', code, members: memberList }));
+                } else {
+                    ws.send(JSON.stringify({ type: 'lobby_error', message: 'Lobby not found' }));
+                }
+                break;
+            }
+
             case 'set_ready': {
                 // Handle ready/unready toggle from frontend
                 if (typeof data.ready === 'boolean') {
@@ -338,7 +354,7 @@ wss.on('connection', function connection(ws) {
                     ws.send(JSON.stringify({ type: 'lobby_status', players: [] }));
                 }
                 break;
-                }
+            }
 
             default:
                 console.warn("Unknown message type:", data.type);
