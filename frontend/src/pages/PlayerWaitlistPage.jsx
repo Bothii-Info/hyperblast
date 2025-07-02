@@ -14,6 +14,24 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
   // 30s countdown clock state
   const [autoCountdown, setAutoCountdown] = useState(30);
   const [autoCountdownActive, setAutoCountdownActive] = useState(true);
+  const readySoundRef = useRef(null);
+
+  // Play ready sound and stop/restart countdown if player toggles ready
+  useEffect(() => {
+    if (currentUser?.isReady && autoCountdownActive) {
+      setAutoCountdownActive(false);
+      if (readySoundRef.current) {
+        try {
+          readySoundRef.current.currentTime = 0;
+          readySoundRef.current.play();
+        } catch (e) {}
+      }
+    } else if (!currentUser?.isReady && !autoCountdownActive) {
+      setAutoCountdown(30);
+      setAutoCountdownActive(true);
+    }
+  }, [currentUser?.isReady, autoCountdownActive]);
+
   // 30s countdown effect for top right clock
   useEffect(() => {
     if (!autoCountdownActive) return;
@@ -29,6 +47,14 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
       setAutoCountdownActive(false);
     }
   }, [autoCountdown, autoCountdownActive, players, currentUser, lobbyCode, sendMessage]);
+
+  // Ready sound effect setup
+  useEffect(() => {
+    readySoundRef.current = new Audio('/sounds/Ready.mp3');
+    readySoundRef.current.preload = 'auto';
+    readySoundRef.current.volume = 0.7;
+    return () => { readySoundRef.current = null; };
+  }, []);
   // NEW: A ref to hold the Audio object, preventing it from being re-created on every render.
   const countdownSoundRef = useRef(null);
   // NEW: A ref that acts as a flag to ensure the sound plays only once per countdown.
@@ -138,11 +164,17 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
   return (
     <>
       {/* 30s countdown clock at top right */}
-      {autoCountdownActive && (
+      {autoCountdownActive ? (
         <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
           <div className="flex items-center gap-2 bg-gray-900/90 px-4 py-2 rounded-lg shadow text-white font-bold text-lg">
             <span>Auto-Ready in</span>
             <span className="text-yellow-400 font-mono">{autoCountdown}s</span>
+          </div>
+        </div>
+      ) : currentUser?.isReady && (
+        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
+          <div className="flex items-center gap-2 bg-green-700/90 px-4 py-2 rounded-lg shadow text-white font-bold text-lg">
+            <span className="text-white">Ready</span>
           </div>
         </div>
       )}
