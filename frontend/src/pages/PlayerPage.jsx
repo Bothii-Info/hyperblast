@@ -609,6 +609,7 @@ const PlayerPage = () => {
       }
     } else {
       if (ws.current && ws.current.readyState === 1) {
+        console.log("Sending hit event to server");
         ws.current.send(JSON.stringify({ type: 'hit', weapon }));
       }
     }
