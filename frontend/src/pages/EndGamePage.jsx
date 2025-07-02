@@ -25,19 +25,6 @@ const EndGamePage = () => {
   const [leaderboardData, setLeaderboardData] = useState([]);
 
   useEffect(() => {
-    // --- BACKEND INTEGRATION GUIDE ---
-    // Here, you would fetch the final game results from your backend using the gameId.
-    // fetch(`https://your-backend.com/api/results/${gameId}`)
-    //   .then(res => res.json())
-    //   .then(data => {
-    //     const sortedPlayers = [...data.players].sort((a, b) => b.score - a.score);
-    //     setLeaderboardData(sortedPlayers);
-    //     if (sortedPlayers.length > 0) {
-    //       setWinner(sortedPlayers[0]);
-    //     }
-    //   })
-    //   .catch(error => console.error("Failed to fetch results:", error));
-
     // For now, we use the dummy data.
     const sortedPlayers = [...finalPlayers].sort((a, b) => b.score - a.score);
     setLeaderboardData(sortedPlayers);

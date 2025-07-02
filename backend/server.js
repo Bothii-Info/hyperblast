@@ -39,6 +39,9 @@ function endGame() {
         clearTimeout(gameTimer);
         gameTimer = null;
         broadcast("game_end", { message: "Game has ended!" });
+        setTimeout(() => {
+            updateLobbyStatus();
+        }, 3000);
         // Optionally reset player ready states and scores
         Object.values(players).forEach(p => {
             if (p.role === 'player') {
@@ -46,7 +49,6 @@ function endGame() {
                 p.score = 0;
             }
         });
-        updateLobbyStatus();
     }
 }
 
@@ -56,7 +58,7 @@ function tryStartGame() {
         gameStarted = true;
         broadcast("game_start", { message: "Game has started!" });
         // Start 100 second timer
-        gameTimer = setTimeout(endGame, 100 * 1000);
+        gameTimer = setTimeout(endGame, 30 * 1000);
     }
 }
 
