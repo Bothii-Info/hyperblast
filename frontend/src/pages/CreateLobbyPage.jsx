@@ -1,25 +1,25 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { ArrowLeft, Swords, Gamepad2, User, Users, Zap, Crown } from "lucide-react"
-import { useWebSocket } from "../WebSocketContext"
-import BackgroundDecorations from "../components/BackgroundDecorations"
-import Button from "../components/Button"
-import Input from "../components/Input"
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, Swords, Gamepad2, User, Users, Zap, Crown } from 'lucide-react'
+import { useWebSocket } from '../WebSocketContext'
+import BackgroundDecorations from '../components/BackgroundDecorations'
+import Button from '../components/Button'
+import Input from '../components/Input'
 
 /**
  * Page for creating a new game lobby with HBlast design consistency.
  */
-function CreateLobbyPage() {
-  const [lobbyName, setLobbyName] = useState("")
-  const [username, setUsername] = useState("")
+const CreateLobbyPage = () => {
+  const [lobbyName, setLobbyName] = useState('')
+  const [username, setUsername] = useState('')
   const [maxPlayers, setMaxPlayers] = useState(8)
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
   const { sendMessage, lastMessage, wsStatus } = useWebSocket()
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!lastMessage) return
 
     try {
@@ -201,29 +201,6 @@ function CreateLobbyPage() {
           </div>
         </div>
       </main>
-
-      {/* Custom CSS for slider */}
-      <style jsx>{`
-        .slider-thumb::-webkit-slider-thumb {
-          appearance: none;
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #9351f7, #e971ff);
-          cursor: pointer;
-          border: 2px solid white;
-          box-shadow: 0 4px 8px rgba(147, 81, 247, 0.3);
-        }
-        .slider-thumb::-moz-range-thumb {
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #9351f7, #e971ff);
-          cursor: pointer;
-          border: 2px solid white;
-          box-shadow: 0 4px 8px rgba(147, 81, 247, 0.3);
-        }
-      `}</style>
     </div>
   )
 }

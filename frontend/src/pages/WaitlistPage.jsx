@@ -1,19 +1,19 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, LogOut } from "lucide-react"
-import { useWebSocket } from "../WebSocketContext"
-import PlayerWaitlistPage from "./PlayerWaitlistPage"
-import HostWaitlistPage from "./HostWaitlistPage"
-import BackgroundDecorations from "../components/BackgroundDecorations"
-import Button from "../components/Button"
+import React, { useState, useMemo } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, LogOut } from 'lucide-react'
+import { useWebSocket } from '../WebSocketContext'
+import PlayerWaitlistPage from './PlayerWaitlistPage'
+import HostWaitlistPage from './HostWaitlistPage'
+import BackgroundDecorations from '../components/BackgroundDecorations'
+import Button from '../components/Button'
 
 /**
  * This component acts as a controller with HBlast design consistency.
  * It fetches shared data and renders either the Host or Player view.
  */
-function WaitlistPage() {
+const WaitlistPage = () => {
   const { lobbyId } = useParams()
   const navigate = useNavigate()
   const { lastMessage, sendMessage, wsStatus } = useWebSocket()
@@ -37,7 +37,7 @@ function WaitlistPage() {
   const isHost = useMemo(() => currentUser?.isHost || false, [currentUser])
 
   // --- WEBSOCKET & COUNTDOWN LOGIC ---
-  useEffect(() => {
+  React.useEffect(() => {
     if (wsStatus === "open" && lobbyId) {
       const storedId = localStorage.getItem("userId")
       if (storedId) {
@@ -47,7 +47,7 @@ function WaitlistPage() {
     }
   }, [wsStatus, lobbyId, sendMessage])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!lastMessage) return
 
     try {
@@ -92,7 +92,7 @@ function WaitlistPage() {
     }
   }, [lastMessage, lobbyId, navigate, currentUserId])
 
-  useEffect(() => {
+  React.useEffect(() => {
     let timerId
     if (isStarting && countdown > 0) {
       timerId = setInterval(() => setCountdown((prev) => prev - 1), 1000)
@@ -104,19 +104,16 @@ function WaitlistPage() {
 
   // --- EVENT HANDLERS ---
   const handleReadyToggle = () => {
-    // Send WebSocket message to update ready status
     sendMessage({
       type: "toggle_ready",
       code: lobbyId,
       userId: currentUserId,
     })
 
-    // Update local state immediately for responsive UI
     setPlayers(players.map((p) => (p.id === currentUserId ? { ...p, isReady: !p.isReady } : p)))
   }
 
   const handleNameChange = (newName) => {
-    // Send WebSocket message to update username
     sendMessage({
       type: "update_username",
       code: lobbyId,
@@ -124,13 +121,11 @@ function WaitlistPage() {
       username: newName,
     })
 
-    // Update local state immediately for responsive UI
     setPlayers(players.map((p) => (p.id === currentUserId ? { ...p, name: newName } : p)))
   }
 
   const handleStart = () => {
     if (allPlayersReady && isHost) {
-      // Send WebSocket message to start game
       sendMessage({
         type: "start_game",
         code: lobbyId,
@@ -142,7 +137,6 @@ function WaitlistPage() {
   }
 
   const handleCancel = () => {
-    // Send WebSocket message to cancel game start
     sendMessage({
       type: "cancel_start",
       code: lobbyId,

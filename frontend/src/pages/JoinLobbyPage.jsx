@@ -1,24 +1,24 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { ArrowLeft, Hash, LogIn, User, Zap } from "lucide-react"
-import { useWebSocket } from "../WebSocketContext"
-import BackgroundDecorations from "../components/BackgroundDecorations"
-import Button from "../components/Button"
-import Input from "../components/Input"
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, Hash, LogIn, User, Zap } from 'lucide-react'
+import { useWebSocket } from '../WebSocketContext'
+import BackgroundDecorations from '../components/BackgroundDecorations'
+import Button from '../components/Button'
+import Input from '../components/Input'
 
 /**
  * A focused page for players to join a private lobby using a specific code with HBlast design.
  */
-function JoinLobbyPage() {
-  const [lobbyCode, setLobbyCode] = useState("")
-  const [username, setUsername] = useState("")
+const JoinLobbyPage = () => {
+  const [lobbyCode, setLobbyCode] = useState('')
+  const [username, setUsername] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
   const { sendMessage, lastMessage, wsStatus } = useWebSocket()
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!lastMessage) return
 
     try {

@@ -1,14 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { Crown, Play, ShieldX, CheckCircle2, XCircle, Copy, Edit3, Save, Users } from "lucide-react"
-import Button from "../components/Button"
-import Input from "../components/Input"
+import { useState } from 'react'
+import { Crown, Play, ShieldX, CheckCircle2, XCircle, Copy, Edit3, Save, Users } from 'lucide-react'
+import Button from '../components/Button'
+import Input from '../components/Input'
 
 /**
  * The waitlist view specifically for the host of the lobby with HBlast design.
  */
-function HostWaitlistPage({
+const HostWaitlistPage = ({
   lobbyId,
   players,
   currentUser,
@@ -19,13 +19,12 @@ function HostWaitlistPage({
   onCancel,
   onReadyToggle,
   onNameChange,
-}) {
+}) => {
   const [isEditingName, setIsEditingName] = useState(false)
-  const [tempName, setTempName] = useState(currentUser?.name || "")
+  const [tempName, setTempName] = useState(currentUser?.name || '')
 
   const copyLobbyCode = () => {
     navigator.clipboard.writeText(lobbyId.toUpperCase())
-    // You could replace this alert with a toast notification
     alert(`Lobby Code "${lobbyId.toUpperCase()}" copied to clipboard!`)
   }
 

@@ -1,13 +1,12 @@
 "use client"
-
-import { useNavigate } from "react-router-dom"
-import BackgroundDecorations from "../components/BackgroundDecorations"
-import { ArrowLeft, Plus, Users, Home, Gamepad2, Target } from "lucide-react"
+import { useNavigate } from 'react-router-dom'
+import BackgroundDecorations from '../components/BackgroundDecorations'
+import { ArrowLeft, Plus, Users, Home, Gamepad2, Target } from 'lucide-react'
 
 /**
  * The main lobby page for players with HBlast design consistency.
  */
-function LobbyPage() {
+const LobbyPage = () => {
   const navigate = useNavigate()
 
   return (

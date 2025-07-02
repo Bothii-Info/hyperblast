@@ -1,14 +1,22 @@
 "use client"
 
-import { useState } from "react"
-import { Crown, CheckCircle2, XCircle, Edit3, Save, Users } from "lucide-react"
-import Button from "../components/Button"
-import Input from "../components/Input"
+import { useState } from 'react'
+import { Crown, CheckCircle2, XCircle, Edit3, Save, Users } from 'lucide-react'
+import Button from '../components/Button'
+import Input from '../components/Input'
 
 /**
  * The waitlist view for regular players with HBlast design.
  */
-function PlayerWaitlistPage({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) {
+const PlayerWaitlistPage = ({
+  players,
+  currentUser,
+  lobbyCode,
+  isStarting,
+  countdown,
+  onReadyToggle,
+  onNameChange,
+}) => {
   const [isEditingName, setIsEditingName] = useState(false)
   const [tempName, setTempName] = useState(currentUser?.name || "")
 

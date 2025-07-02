@@ -1,17 +1,17 @@
 "use client"
-import { useNavigate } from "react-router-dom"
-import BackgroundDecorations from "../components/BackgroundDecorations"
-import Header from "../components/Header"
-import HeroSection from "../components/HeroSection"
-import GameCards from "../components/GameCards"
-import PlayerAvatars from "../components/PlayerAvatars"
-import ZigzagDecoration from "../components/ZigzagDecoration"
+import { useNavigate } from 'react-router-dom'
+import BackgroundDecorations from '../components/BackgroundDecorations'
+import Header from '../components/Header'
+import HeroSection from '../components/HeroSection'
+import GameCards from '../components/GameCards'
+import PlayerAvatars from '../components/PlayerAvatars'
+import ZigzagDecoration from '../components/ZigzagDecoration'
 
 /**
  * The main landing page for the HBlast laser tag game.
  * Features the complete HBlast UI with navigation capabilities.
  */
-function LandingPage() {
+const LandingPage = () => {
   const navigate = useNavigate()
 
   return (

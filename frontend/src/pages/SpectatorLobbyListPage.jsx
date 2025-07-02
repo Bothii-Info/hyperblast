@@ -1,30 +1,26 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import BackgroundDecorations from "../components/BackgroundDecorations"
-import { Users, Signal, ArrowLeft, Eye, Zap, Clock, Target } from "lucide-react"
-import { useWebSocket } from "../WebSocketContext"
-
-// --- DUMMY DATA ---
-// Remove this line completely:
-// const dummyLobbies = [...]
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import BackgroundDecorations from '../components/BackgroundDecorations'
+import { Users, Signal, ArrowLeft, Eye, Zap, Clock, Target } from 'lucide-react'
+import { useWebSocket } from '../WebSocketContext'
 
 /**
  * Page to display a list of active game lobbies for spectators with HBlast design.
  */
-function SpectatorLobbyListPage() {
+const SpectatorLobbyListPage = () => {
   const [lobbies, setLobbies] = useState([])
   const navigate = useNavigate()
   const { sendMessage, lastMessage, wsStatus } = useWebSocket()
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (wsStatus === "open") {
       sendMessage({ type: "show_lobbies" })
     }
   }, [wsStatus, sendMessage])
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!lastMessage) return
 
     try {
@@ -32,17 +28,32 @@ function SpectatorLobbyListPage() {
       console.log(msg)
 
       if (msg.type === "lobby_list" && Array.isArray(msg.lobbies)) {
+        // Filter out default/test lobbies and only show real active lobbies
+        const realLobbies = msg.lobbies.filter((lobby) => {
+          // Filter out default lobbies, empty lobbies, or test lobbies
+          return (
+            lobby.code &&
+            lobby.name &&
+            !lobby.name.toLowerCase().includes("default") &&
+            !lobby.name.toLowerCase().includes("test") &&
+            lobby.playerCount > 0 // Only show lobbies with actual players
+          )
+        })
+
         setLobbies(
-          msg.lobbies.map((lobby) => ({
+          realLobbies.map((lobby) => ({
             id: lobby.code,
-            name: lobby.name || "Unnamed Lobby",
+            name: lobby.name,
             players: lobby.playerCount,
             maxPlayers: lobby.maxPlayers || 8,
-            status: lobby.playerCount >= (lobby.maxPlayers || 8) ? "Full" : "Waiting",
+            status:
+              lobby.playerCount >= (lobby.maxPlayers || 8) ? "Full" : lobby.playerCount > 0 ? "In Progress" : "Waiting",
           })),
         )
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Error parsing WebSocket message:", e)
+    }
   }, [lastMessage])
 
   const getStatusColor = (status) => {

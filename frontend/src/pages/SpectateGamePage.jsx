@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import Leaderboard from "../components/Leaderboard"
-import BackgroundDecorations from "../components/BackgroundDecorations"
-import { ArrowLeft, Zap, Target, Timer, Users, Trophy, Activity } from "lucide-react"
+import React, { useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import Leaderboard from '../components/Leaderboard'
+import BackgroundDecorations from '../components/BackgroundDecorations'
+import { ArrowLeft, Zap, Target, Timer, Users, Trophy, Activity } from 'lucide-react'
 
 // --- DUMMY DATA ---
 const dummyPlayers = [
@@ -26,14 +26,14 @@ const gameStats = {
 /**
  * A spectate page focused on displaying an awesome laser tag leaderboard
  */
-function SpectateGamePage() {
+const SpectateGamePage = () => {
   const { lobbyId } = useParams()
   const navigate = useNavigate()
   const [players, setPlayers] = useState(dummyPlayers)
   const [gameTime, setGameTime] = useState(gameStats.duration)
 
   // Simulate live updates
-  useEffect(() => {
+  React.useEffect(() => {
     const interval = setInterval(() => {
       setPlayers((prevPlayers) =>
         prevPlayers.map((player) => ({
