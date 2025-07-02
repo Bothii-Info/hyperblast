@@ -215,7 +215,7 @@ wss.on('connection', function connection(ws) {
                     // Delay showLobbies to ensure lobby_joined is processed first
                     setTimeout(() => {
                         showLobbies();
-                    }, 100); // 100ms delay
+                    }, 300); // 100ms delay
                 } else {
                     console.log('Could not join lobby for code:', code, 'user:', userId); // ADDED LOG
                     ws.send(JSON.stringify({ type: 'lobby_error', message: 'Could not join lobby' }));
