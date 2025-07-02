@@ -13,13 +13,34 @@ let gameTimer = null;
 // Lobby storage
 let lobbies = {};
 
+// Player identity and face data storage
+let playerIdentities = {}; // key: userId, value: { username, faceData }
+
 function broadcast(type, payload) {
     const message = JSON.stringify({ type, ...payload });
+    console.log(`📡 BROADCAST: Sending ${type} to ${wss.clients.size} clients`);
+    if (type === 'game_start') {
+        console.log('📡 BROADCAST: game_start payload:', JSON.stringify(payload, null, 2));
+    }
+    
+    let successCount = 0;
+    let failCount = 0;
+    
     wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
-            client.send(message);
+            try {
+                client.send(message);
+                successCount++;
+            } catch (e) {
+                console.error('📡 BROADCAST ERROR: Failed to send to client:', e);
+                failCount++;
+            }
+        } else {
+            failCount++;
         }
     });
+    
+    console.log(`📡 BROADCAST RESULT: ${type} sent to ${successCount} clients, ${failCount} failed/closed`);
 }
 
 function updateLobbyStatus() {
@@ -31,6 +52,26 @@ function updateLobbyStatus() {
         score: p.score || 0
     }));
     broadcast("lobby_status", { players: lobbyStatus });
+}
+
+// Function to prepare player data to be sent to clients
+function preparePlayerData(lobbyCode) {
+    if (!lobbies[lobbyCode]) return {};
+    
+    const playerData = {};
+    const readyPlayers = lobbies[lobbyCode].players
+        .filter(userId => players[userId] && players[userId].ready)
+        .map(userId => ({
+            userId,
+            username: players[userId].username || `Player ${userId}`
+        }));
+    
+    // Map player positions to usernames
+    readyPlayers.forEach((player, index) => {
+        playerData[index + 1] = player.username;
+    });
+    
+    return playerData;
 }
 
 function endGame() {
@@ -51,12 +92,127 @@ function endGame() {
 }
 
 function tryStartGame() {
-    const readyPlayers = Object.values(players).filter(p => p.role === 'player' && p.ready);
-    if (!gameStarted && readyPlayers.length >= 4) {
+    console.log('=== DEBUG: tryStartGame called ===');
+    
+    const readyPlayers = Object.entries(players)
+        .filter(([userId, p]) => p.role === 'player' && p.ready)
+        .map(([userId, p]) => ({ ...p, userId })); // Include userId in the object
+    
+    console.log(`tryStartGame called: ${readyPlayers.length} ready players`);
+    console.log('Ready players details:', readyPlayers.map(p => ({
+        userId: p.userId,
+        username: p.username,
+        role: p.role,
+        ready: p.ready
+    })));
+    
+    // DEBUG: Show ALL stored playerIdentities
+    console.log('=== STORED PLAYER IDENTITIES ===');
+    console.log('Total stored identities:', Object.keys(playerIdentities).length);
+    Object.keys(playerIdentities).forEach(uid => {
+        const identity = playerIdentities[uid];
+        console.log(`UserID ${uid}:`, {
+            username: identity.username,
+            hasDetectionData: !!identity.detectionData,
+            detectionBbox: identity.detectionData?.bbox,
+            detectionConfidence: identity.detectionData?.confidence
+        });
+    });
+    
+    if (!gameStarted && readyPlayers.length >= 2) {
         gameStarted = true;
-        broadcast("game_start", { message: "Game has started!" });
+        
+        // Find the lobby code for these players
+        let lobbyCode = null;
+        console.log('=== DEBUG: Finding lobby code ===');
+        console.log('All lobbies:', Object.keys(lobbies));
+        
+        Object.entries(lobbies).forEach(([code, lobby]) => {
+            console.log(`Checking lobby ${code}:`, {
+                players: lobby.players,
+                readyPlayerUserIds: readyPlayers.map(p => p.userId)
+            });
+            
+            const lobbyPlayerIds = lobby.players;
+            const allPlayersInThisLobby = readyPlayers.every(p => 
+                lobbyPlayerIds.some(id => id === p.userId)
+            );
+            console.log(`Lobby ${code} contains all ready players:`, allPlayersInThisLobby);
+            
+            if (allPlayersInThisLobby) {
+                lobbyCode = code;
+                console.log(`Selected lobby code: ${lobbyCode}`);
+            }
+        });
+        
+        console.log(`Final lobby code: ${lobbyCode}`);
+        
+        // Create a map of player positions to usernames for the frontend
+        const playerPositions = lobbyCode ? preparePlayerData(lobbyCode) : {};
+        console.log('Player positions prepared:', playerPositions);
+        
+        // Add player identity data if available
+        const playerIdentityData = {};
+        console.log('=== DEBUG: Building player identity data ===');
+        console.log('Current playerIdentities store:', playerIdentities);
+        console.log('Player positions to process:', playerPositions);
+        
+        Object.keys(playerPositions).forEach(position => {
+            const username = playerPositions[position];
+            console.log(`\n--- Processing position ${position} ---`);
+            console.log(`Username from playerPositions: ${username}`);
+            
+            // Find the userId for this username
+            const userId = Object.keys(players).find(id => 
+                players[id].username === username
+            );
+            console.log(`Found userId for ${username}: ${userId}`);
+            
+            // Check if we have stored data for this userId
+            if (userId) {
+                const hasStoredData = !!playerIdentities[userId];
+                console.log(`Has stored data for ${userId}: ${hasStoredData}`);
+                
+                if (hasStoredData) {
+                    const storedData = playerIdentities[userId];
+                    console.log(`Stored data for ${userId}:`, {
+                        username: storedData.username,
+                        hasDetectionData: !!storedData.detectionData,
+                        detectionData: storedData.detectionData
+                    });
+                }
+            }
+            
+            if (userId && playerIdentities[userId]) {
+                console.log(`✅ Adding identity for position ${position}: ${username} (userId: ${userId})`);
+                console.log('Identity data:', playerIdentities[userId]);
+                playerIdentityData[position] = {
+                    userId: userId,
+                    username: username,
+                    faceData: playerIdentities[userId].faceData,
+                    detectionData: playerIdentities[userId].detectionData
+                };
+            } else {
+                console.log(`❌ No stored identity for position ${position}: ${username} (userId: ${userId})`);
+                playerIdentityData[position] = {
+                    username: username
+                };
+            }
+        });
+        
+        console.log('=== FINAL PLAYER IDENTITY DATA ===');
+        console.log('Broadcasting player identities:', JSON.stringify(playerIdentityData, null, 2));
+        
+        broadcast("game_start", { 
+            message: "Game has started!",
+            playerPositions: playerPositions,
+            playerIdentities: playerIdentityData
+        });
+        
         // Start 100 second timer
         gameTimer = setTimeout(endGame, 100 * 1000);
+    } else {
+        console.log(`Cannot start game: gameStarted=${gameStarted}, readyPlayers=${readyPlayers.length}`);
     }
 }
 
@@ -155,7 +311,7 @@ wss.on('connection', function connection(ws) {
         showLobbies();
     }
 
-    console.log(`Client ${userId} connected`);
+    console.log(`Client ${userId} connected. Total connections: ${wss.clients.size}`);
     ws.send(JSON.stringify({ type: 'welcome', userId }));
 
     ws.on('message', function incoming(message) {
@@ -177,8 +333,26 @@ wss.on('connection', function connection(ws) {
                 if (typeof data.username === 'string' && data.username.trim()) {
                     player.username = data.username.trim();
                 }
+                player.role = 'player'; // Ensure the creator is set as a player
                 const code = createLobby(userId, maxPlayers, name);
+                
+                // Send lobby created confirmation
                 ws.send(JSON.stringify({ type: 'lobby_created', code, maxPlayers, name }));
+                
+                // Immediately send the lobby members to the creator
+                const memberList = lobbies[code].players.map(uid => ({
+                    userId: uid,
+                    username: players[uid]?.username || null,
+                    isHost: lobbies[code].host === uid,
+                    isReady: players[uid]?.ready || false
+                }));
+                
+                ws.send(JSON.stringify({ 
+                    type: 'lobby_members', 
+                    code: code, 
+                    members: memberList 
+                }));
+                
                 showLobbies();
                 break;
             }
@@ -186,6 +360,7 @@ wss.on('connection', function connection(ws) {
                 console.log('Received join_lobby request:', data); // ADDED LOG
                 if (typeof data.username === 'string' && data.username.trim()) {
                     player.username = data.username.trim();
+                    console.log(`User ${userId} set username to: ${player.username}`);
                 }
 
                 const code = data.code.toUpperCase();
@@ -255,6 +430,12 @@ wss.on('connection', function connection(ws) {
             case 'get_lobby_members': {
                 const { code } = data;
                 if (lobbies[code]) {
+                    // Check if this user is in the lobby, if not, add them
+                    if (!lobbies[code].players.includes(userId)) {
+                        console.log(`Adding user ${userId} to lobby ${code} as they requested lobby members`);
+                        joinLobby(userId, code);
+                    }
+                    
                     const memberList = lobbies[code].players.map(uid => ({
                         userId: uid,
                         username: players[uid]?.username || null,
@@ -298,12 +479,11 @@ wss.on('connection', function connection(ws) {
                             console.log(`All players ready in lobby ${code}, starting countdown`);
                             broadcastToLobby(code, "game_start_countdown", { countdown: 3 });
 
-                            // After 3 seconds, start the game
+                            // After 3 seconds, start the game using tryStartGame
                             setTimeout(() => {
                                 if (lobbies[code]) {
-                                    gameStarted = true;
-                                    broadcastToLobby(code, "game_started", { code });
-                                    console.log(`Game started in lobby ${code}`);
+                                    console.log(`Attempting to start game in lobby ${code}`);
+                                    tryStartGame();
                                 }
                             }, 3000);
                         }
@@ -322,6 +502,64 @@ wss.on('connection', function connection(ws) {
             case 'miss':
                 // No action for miss for now
                 break;
+
+            case 'set_name': {
+                // Handle username change from frontend
+                const { username, code } = data;
+                if (typeof username === 'string' && username.trim() !== '') {
+                    player.username = username.trim();
+                    console.log(`User ${userId} changed username to: ${player.username}`);
+                    
+                    // Broadcast updated lobby members to all clients in the same lobby
+                    if (code && lobbies[code]) {
+                        const memberList = lobbies[code].players.map(uid => ({
+                            userId: uid,
+                            username: players[uid]?.username || null,
+                            isHost: lobbies[code].host === uid,
+                            isReady: players[uid]?.ready || false
+                        }));
+                        broadcastToLobby(code, "lobby_members", { code, members: memberList });
+                    }
+                }
+                break;
+            }
+
+            case 'store_face_data': {
+                const { faceData, detectionData, lobbyCode, userId: clientUserId } = data;
+                console.log('Received store_face_data request:', {
+                    hasDetectionData: !!detectionData,
+                    lobbyCode,
+                    clientUserId,
+                    detectionData: detectionData
+                });
+                
+                if (faceData) {
+                    // Use the userId from the message if provided, otherwise use the connection userId
+                    const userIdToUse = clientUserId || userId;
+                    
+                    // Store the face data with the player's username
+                    const username = players[userIdToUse]?.username || `Player ${userIdToUse.substring(0, 4)}`;
+                    storePlayerFaceData(userIdToUse, username, faceData, detectionData);
+                    console.log(`Stored face data for user ${userIdToUse} (${username})${detectionData ? ' with detection data' : ''}`);
+                    
+                    // Log current state of playerIdentities after storing
+                    console.log('Current playerIdentities after storing:', Object.keys(playerIdentities).map(uid => ({
+                        userId: uid,
+                        username: playerIdentities[uid].username,
+                        hasDetectionData: !!playerIdentities[uid].detectionData,
+                        detectionDataBbox: playerIdentities[uid].detectionData?.bbox
+                    })));
+                    
+                    // Broadcast to all players in the lobby that this player's face data is available
+                    if (lobbyCode && lobbies[lobbyCode]) {
+                        broadcastToLobby(lobbyCode, "player_face_updated", { 
+                            userId: userIdToUse,
+                            username: username
+                        });
+                    }
+                }
+                break;
+            }
 
             default:
                 console.warn("Unknown message type:", data.type);
@@ -369,4 +607,41 @@ function removeNullUsersFromLobby(lobbyCode) {
             delete players[uid];
         }
     });
+}
+
+// Store player face data
+function storePlayerFaceData(userId, username, faceData, detectionData = null) {
+  console.log(`=== STORING PLAYER DATA ===`);
+  console.log(`UserID: ${userId}`);
+  console.log(`Username: ${username}`);
+  console.log(`Has faceData: ${!!faceData}`);
+  console.log(`Has detectionData: ${!!detectionData}`);
+  
+  if (detectionData) {
+    console.log(`Detection data:`, {
+      bbox: detectionData.bbox,
+      confidence: detectionData.confidence,
+      username: detectionData.username,
+      userId: detectionData.userId,
+      timestamp: detectionData.timestamp
+    });
+  }
+  
+  playerIdentities[userId] = { 
+    username: username || players[userId]?.username || `Player ${userId.substring(0, 4)}`,
+    faceData: faceData,
+    detectionData: detectionData // Store bbox, confidence, etc.
+  };
+  
+  console.log(`✅ Stored identity for ${userId}:`, {
+    username: playerIdentities[userId].username,
+    hasDetectionData: !!playerIdentities[userId].detectionData,
+    detectionBbox: playerIdentities[userId].detectionData?.bbox
+  });
+  
+  // Show all stored identities after this storage
+  console.log(`Current total stored identities: ${Object.keys(playerIdentities).length}`);
+  Object.keys(playerIdentities).forEach(uid => {
+    console.log(`  - ${uid}: ${playerIdentities[uid].username} (hasDetection: ${!!playerIdentities[uid].detectionData})`);
+  });
 }

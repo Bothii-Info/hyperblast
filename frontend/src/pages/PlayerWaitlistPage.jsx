@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'; // Import useEffect
 import { Crown, CheckCircle2, XCircle, Pencil } from 'lucide-react';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import PlayerScan from '../components/PlayerScan';
 import { useWebSocket } from '../WebSocketContext';
 
 /**
@@ -10,11 +11,22 @@ import { useWebSocket } from '../WebSocketContext';
 const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInputValue, setNameInputValue] = useState('');
+  const [isFaceScanComplete, setIsFaceScanComplete] = useState(false);
   const { sendMessage, lastMessage, wsStatus, ws } = useWebSocket();
 
   useEffect(() => {
     if (currentUser) {
       setNameInputValue(currentUser.name);
+      
+      // Check if face scan is already complete for this user
+      try {
+        const playerFaces = JSON.parse(localStorage.getItem('playerFaces') || '{}');
+        if (playerFaces[currentUser.name]) {
+          setIsFaceScanComplete(true);
+        }
+      } catch (e) {
+        console.error("Error checking face scan status:", e);
+      }
     }
   }, [currentUser]);
 
@@ -101,6 +113,16 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
           </div>
         ))}
       </div>
+      <div className="mt-4">
+        {/* Face scanning section - only show for the current user */}
+        {currentUser && !isStarting && (
+          <PlayerScan 
+            username={currentUser.name}
+            lobbyCode={lobbyCode}
+            onScanComplete={() => setIsFaceScanComplete(true)}
+          />
+        )}
+      </div>
       <div className="mt-6 space-y-3">
         {isEditingName ? (
           <>
@@ -109,7 +131,7 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
           </>
         ) : (
           <>
-            <Button onClick={handleReadyToggle} disabled={isEditingName} className={`flex items-center justify-center gap-2 ${currentUser?.isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}`}>
+            <Button onClick={handleReadyToggle} disabled={isEditingName || !isFaceScanComplete} className={`flex items-center justify-center gap-2 ${currentUser?.isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'} ${!isFaceScanComplete ? 'opacity-50 cursor-not-allowed' : ''}`}>
               {currentUser?.isReady ? <XCircle size={20} /> : <CheckCircle2 size={20} />}
               <span>{currentUser?.isReady ? 'Set to Not Ready' : 'Ready Up'}</span>
             </Button>

@@ -27,17 +27,28 @@ export function WebSocketProvider({ children }) {
       }
     }
     ws.current = new window.WebSocket(wsUrl);
+    console.log(`🔌 WS: Connecting to ${wsUrl}`);
 
-    ws.current.onopen = () => setWsStatus('open');
-    ws.current.onclose = () => setWsStatus('closed');
-    ws.current.onerror = () => setWsStatus('error');
+    ws.current.onopen = () => {
+      console.log('🔌 WS: Connection opened');
+      setWsStatus('open');
+    };
+    ws.current.onclose = () => {
+      console.log('🔌 WS: Connection closed');
+      setWsStatus('closed');
+    };
+    ws.current.onerror = (error) => {
+      console.log('🔌 WS: Connection error:', error);
+      setWsStatus('error');
+    };
     ws.current.onmessage = (event) => {
-      console.log('WS received:', event.data); // ADDED LOG
+      console.log('🔌 WS received:', event.data); // ADDED LOG
       setLastMessage(event.data);
       // Store userId from welcome message
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'welcome' && msg.userId) {
+          console.log('🔌 WS: Setting userId in localStorage:', msg.userId);
           localStorage.setItem('userId', msg.userId);
         }
       } catch (e) {

@@ -56,7 +56,16 @@ const CreateLobbyPage = () => {
       alert('WebSocket not connected.');
       return;
     }
+    
+    // Make sure we have a userId
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      alert('Connection not properly established. Please refresh and try again.');
+      return;
+    }
+    
     setIsLoading(true);
+    console.log('Creating lobby with userId:', userId, 'username:', username.trim());
     sendMessage({
       type: 'create_lobby',
       name: lobbyName.trim(), // Trim lobby name
