@@ -17,7 +17,7 @@ const CreateLobbyPage = () => {
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+  const { sendMessage, lastMessage, wsStatus, ws } = useWebSocket();
 
   // Listen for lobby_created response
   React.useEffect(() => {

@@ -3,13 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import HealthBar from '../components/HealthBar';
 import Button from '../components/Button';
 import { Zap, Crosshair, Timer, Menu, LogOut, Skull } from 'lucide-react';
+import { useWebSocket } from '../WebSocketContext';
 
 const PlayerPage = () => {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const ws = useRef(null);
   const resizeObserverRef = useRef(null);
 
   // Detection model refs and state
@@ -99,28 +99,8 @@ const PlayerPage = () => {
     return () => clearInterval(timerInterval);
   }, [gameId, navigate, isMenuOpen]);
 
-  useEffect(() => {
-    ws.current = new WebSocket('ws://localhost:8080');
-    ws.current.onopen = () => {};
-    ws.current.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'hit' && data.shooter) {
-          if (data.shooter === 'me') {
-            setScore(data.newScore || (s => s + (data.points || 50)));
-            setShowHitIndicator(true);
-          }
-        }
-        if (data.type === 'score' && data.userId === 'me') {
-          setScore(data.score);
-        }
-      } catch (e) {}
-    };
-    
-    return () => {
-      if (ws.current) ws.current.close();
-    };
-  }, []);
+  // --- Use WebSocket from context ---
+  const { ws, wsStatus } = useWebSocket();
 
   // Load TensorFlow.js and COCO-SSD model
   useEffect(() => {
@@ -511,8 +491,11 @@ const PlayerPage = () => {
     setScore(s => {
       // TODO: Add code for different gun classes and their score multipliers
       const newScore = s + 50;
-      if (ws.current && ws.current.readyState === 1) {
-        ws.current.send(JSON.stringify({ type: 'score', score: newScore }));
+      if (!ws) {
+        console.log('Websocket not working');
+      }
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'score', score: newScore }));
       }
       return newScore;
     });
@@ -604,13 +587,13 @@ const PlayerPage = () => {
     if (!hit) {
       playSound(missSoundRef);
       setShowHitIndicator('miss');
-      if (ws.current && ws.current.readyState === 1) {
-        ws.current.send(JSON.stringify({ type: 'miss', weapon }));
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'miss', weapon }));
       }
     } else {
-      if (ws.current && ws.current.readyState === 1) {
+      if (ws && ws.readyState === 1) {
         console.log("Sending hit event to server");
-        ws.current.send(JSON.stringify({ type: 'hit', weapon }));
+        ws.send(JSON.stringify({ type: 'hit', weapon }));
       }
     }
   };

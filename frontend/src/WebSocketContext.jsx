@@ -60,7 +60,7 @@ export function WebSocketProvider({ children }) {
   };
 
   return (
-    <WebSocketContext.Provider value={{ ws, wsStatus, lastMessage, sendMessage }}>
+    <WebSocketContext.Provider value={{ ws: ws.current, wsStatus, lastMessage, sendMessage }}>
       {children}
     </WebSocketContext.Provider>
   );

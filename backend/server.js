@@ -292,6 +292,8 @@ wss.on('connection', function connection(ws) {
                         const enoughPlayers = lobbies[code].players.length >= 2;
 
                         if (allReady && enoughPlayers && !gameStarted) {
+                            // Remove null/unnamed users before starting the game
+                            removeNullUsersFromLobby(code);
                             // Start countdown for game start
                             console.log(`All players ready in lobby ${code}, starting countdown`);
                             broadcastToLobby(code, "game_start_countdown", { countdown: 3 });
@@ -310,6 +312,7 @@ wss.on('connection', function connection(ws) {
                 break;
             }
             case 'hit':
+                
                 // Increase score by 50 if weapon is gun
                 if (data.weapon === 'gun') {
                     player.score = (player.score || 0) + 50;
@@ -351,3 +354,19 @@ server.listen(port, () => {
 
 // // Send score update
 // { "type": "score", "score": 3 }
+
+// Remove users with null/empty usernames from a lobby and from players
+function removeNullUsersFromLobby(lobbyCode) {
+    if (!lobbies[lobbyCode]) return;
+    // Remove from lobby's player list
+    lobbies[lobbyCode].players = lobbies[lobbyCode].players.filter(uid => {
+        const p = players[uid];
+        return p && p.username && p.username.trim();
+    });
+    // Remove from players object
+    Object.keys(players).forEach(uid => {
+        if (players[uid].lobbyCode === lobbyCode && (!players[uid].username || !players[uid].username.trim())) {
+            delete players[uid];
+        }
+    });
+}
