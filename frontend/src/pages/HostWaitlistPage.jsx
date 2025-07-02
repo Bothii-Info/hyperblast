@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react'; // NEW: Added useRef for more robust sound handling.
 import { Crown, Play, ShieldX, Clipboard, CheckCircle2, XCircle } from 'lucide-react';
 import Button from '../components/Button';
 
@@ -6,12 +6,42 @@ import Button from '../components/Button';
  * The waitlist view specifically for the host of the lobby.
  */
 const HostWaitlistPage = ({ lobbyId, players, allPlayersReady, isStarting, countdown, onStart, onCancel }) => {
-  
+  
+  // NEW: A ref is used to hold the Audio object. This prevents it from being re-created on every render.
+  const countdownSoundRef = useRef(null);
+  // NEW: A ref is used as a flag to ensure the sound only plays once per countdown sequence.
+  const countdownPlayed = useRef(false);
+
+  // NEW: This effect runs only once when the component mounts to create the audio object.
+  useEffect(() => {
+    // NEW: The audio path is corrected to '/sounds/Countdown.mp3' for consistency with other components.
+    countdownSoundRef.current = new Audio('/sounds/Countdown.mp3');
+    
+    // NEW: A cleanup function is returned to properly dispose of the audio object when the component is unmounted.
+    return () => {
+      if (countdownSoundRef.current) {
+        countdownSoundRef.current.pause();
+        countdownSoundRef.current = null;
+      }
+    };
+  }, []); // NEW: The empty dependency array [] ensures this effect runs only once.
+  
+  // This useEffect block handles playing the sound when the 'isStarting' prop changes.
   useEffect(() => {
-    if (isStarting) {
-      const audio = new Audio('/countdown.mp3');
-      audio.play();
-    }
+    // NEW: Check if the countdown is starting AND if the sound has not already been played for this sequence.
+    if (isStarting && !countdownPlayed.current) {
+      // NEW: Ensure the audio object has been loaded before trying to play it.
+      if (countdownSoundRef.current) {
+        countdownSoundRef.current.volume = 0.7; // Set volume to a reasonable level
+        countdownSoundRef.current.currentTime = 0; // NEW: Rewind the sound to the start before playing.
+        countdownSoundRef.current.play().catch(error => console.error("Error playing sound:", error));
+        // NEW: Set the flag to true to prevent the sound from playing again during this countdown.
+        countdownPlayed.current = true;
+      }
+    } else if (!isStarting) {
+      // NEW: If the countdown is cancelled or over, reset the flag for the next game.
+      countdownPlayed.current = false;
+    }
   }, [isStarting]);
 
   const copyLobbyCode = () => {

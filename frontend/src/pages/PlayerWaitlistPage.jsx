@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Import useEffect
+import React, { useState, useEffect, useRef } from 'react'; // NEW: Added useRef for robust sound handling.
 import { Crown, CheckCircle2, XCircle, Pencil } from 'lucide-react';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -10,7 +10,11 @@ import { useWebSocket } from '../WebSocketContext';
 const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInputValue, setNameInputValue] = useState('');
-  const { sendMessage, lastMessage, wsStatus, ws } = useWebSocket();
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+  // NEW: A ref to hold the Audio object, preventing it from being re-created on every render.
+  const countdownSoundRef = useRef(null);
+  // NEW: A ref that acts as a flag to ensure the sound plays only once per countdown.
+  const countdownPlayed = useRef(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -18,11 +22,36 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
     }
   }, [currentUser]);
 
+  // NEW: This effect hook runs only once on mount to create the audio object.
+  useEffect(() => {
+    // NEW: The audio path is corrected to '/sounds/Countdown.mp3' for consistency.
+    countdownSoundRef.current = new Audio('/sounds/Countdown.mp3');
+
+    // NEW: A cleanup function is returned to properly handle the audio object when the component unmounts.
+    return () => {
+      if (countdownSoundRef.current) {
+        countdownSoundRef.current.pause();
+        countdownSoundRef.current = null;
+      }
+    };
+  }, []); // NEW: The empty dependency array ensures this effect runs only once.
+
+  // This useEffect block handles playing the sound when the 'isStarting' prop changes.
   useEffect(() => {
-    if (isStarting) {
-      const audio = new Audio('/countdown.mp3');
-      audio.play();
-    }
+    // NEW: Check if the countdown is starting AND if the sound has not already been played for this sequence.
+    if (isStarting && !countdownPlayed.current) {
+      // NEW: Check that the audio object has been loaded before attempting to play it.
+      if (countdownSoundRef.current) {
+        countdownSoundRef.current.volume = 0.7; // Set volume to a reasonable level
+        countdownSoundRef.current.currentTime = 0; // NEW: Rewind the sound to the start.
+        countdownSoundRef.current.play().catch(error => console.error("Error playing sound:", error));
+        // NEW: Set the flag to true to prevent the sound from playing again during this countdown.
+        countdownPlayed.current = true;
+      }
+    } else if (!isStarting) {
+      // NEW: If the countdown is over or cancelled, reset the flag for the next game.
+      countdownPlayed.current = false;
+    }
   }, [isStarting]);
 
   const handleEditName = () => {

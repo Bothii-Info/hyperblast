@@ -32,7 +32,7 @@ const PlayerPage = () => {
   const [showHitIndicator, setShowHitIndicator] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [gameStarting, setGameStarting] = useState(false);
-  const [startCountdown, setStartCountdown] = useState(4);
+  const [startCountdown, setStartCountdown] = useState(30);
 
   // --- Sound Effects ---
   const hitSoundRef = useRef(null);
@@ -89,7 +89,9 @@ const PlayerPage = () => {
         setGameTime(prevTime => {
           if (prevTime <= 1) {
             clearInterval(timerInterval);
-            navigate(`/game/${gameId}/end`);
+            setTimeout(() => {
+              navigate(`/game/${gameId}/end`);
+            }, 2000); // Wait 2 seconds before navigating
             return 0;
           }
           return prevTime - 1;
