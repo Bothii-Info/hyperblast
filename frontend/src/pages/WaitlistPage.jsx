@@ -148,8 +148,7 @@ const WaitlistPage = () => {
       <main className="flex flex-grow flex-col justify-center p-4 md:p-6">
         <div className="mx-auto w-full max-w-2xl">
           {/* If the user is already loaded and we're not waiting for their player data */}
-          {currentUser && (
-            <PlayerWaitlistPage
+          {<PlayerWaitlistPage
               players={players}
               currentUser={currentUser}
               lobbyCode={lobbyId}
@@ -158,7 +157,7 @@ const WaitlistPage = () => {
               onReadyToggle={handleReadyToggle}
               onNameChange={handleNameChange}
             />
-          )}
+          }
 
           {/* If the user is not yet loaded or we're still waiting for player data */}
           {!currentUser && !isStarting && (
