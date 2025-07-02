@@ -94,8 +94,13 @@ function tryStartGame() {
 }
 
 function generateLobbyCode() {
-    // Simple 6-character alphanumeric code
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+    // 6-character alphabetic code (A-Z)
+    let code = '';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
 }
 
 function createLobby(hostUserId, maxPlayers = 8, name = "Lobby", playerClass = "pistol") {
