@@ -12,6 +12,7 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
   const { sendMessage, lastMessage, wsStatus } = useWebSocket();
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInputValue, setNameInputValue] = useState('');
+  const [isFaceScanComplete, setIsFaceScanComplete] = useState(false);
   // 30s countdown clock state
   const [autoCountdown, setAutoCountdown] = useState(30);
   const [autoCountdownActive, setAutoCountdownActive] = useState(true);
@@ -22,13 +23,24 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
       const timer = setTimeout(() => setAutoCountdown(c => c - 1), 1000);
       return () => clearTimeout(timer);
     } else if (autoCountdown === 0 && autoCountdownActive) {
-      // Set all players to ready and start the game
+      // Set player to ready and stop countdown
       if (players && players.length > 0 && currentUser && lobbyCode) {
         sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
       }
       setAutoCountdownActive(false);
     }
   }, [autoCountdown, autoCountdownActive, players, currentUser, lobbyCode, sendMessage]);
+
+  // Restart timer if player goes from ready to not ready
+  const prevIsReadyRef = useRef(currentUser?.isReady);
+  useEffect(() => {
+    if (!currentUser) return;
+    if (prevIsReadyRef.current && !currentUser.isReady) {
+      setAutoCountdown(30);
+      setAutoCountdownActive(true);
+    }
+    prevIsReadyRef.current = currentUser.isReady;
+  }, [currentUser]);
   // NEW: A ref to hold the Audio object, preventing it from being re-created on every render.
   const countdownSoundRef = useRef(null);
   // NEW: A ref that acts as a flag to ensure the sound plays only once per countdown.
