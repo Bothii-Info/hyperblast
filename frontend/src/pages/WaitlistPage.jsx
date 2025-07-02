@@ -24,8 +24,15 @@ const WaitlistPage = () => {
 
   // --- DERIVED STATE ---
   const currentUser = useMemo(() => {
-    if (!currentUserId || players.length === 0) return null;
+    if (!currentUserId || !players || players.length === 0) return null;
+
+    console.log("Finding current user with ID:", currentUserId);
+    console.log("Available players:", players);
+
     const user = players.find(p => p.id === currentUserId);
+    if (!user) {
+      console.log("Current user not found in players list");
+    }
     return user || null;
   }, [players, currentUserId]);
   
@@ -37,12 +44,31 @@ const WaitlistPage = () => {
       // Try to get userId from localStorage
       const storedId = localStorage.getItem('userId');
       if (storedId) {
+        console.log("Setting currentUserId from localStorage in initial effect:", storedId);
         setCurrentUserId(storedId);
+      } else {
+        console.log("No userId found in localStorage");
       }
+
       // Request lobby members
+      console.log("Requesting lobby members for:", lobbyId);
       sendMessage({ type: 'get_lobby_members', code: lobbyId });
+    } else {
+      console.log("WebSocket not ready or no lobbyId. Status:", wsStatus, "LobbyId:", lobbyId);
     }
   }, [wsStatus, lobbyId, sendMessage]);
+
+  // Retry mechanism for when user is not found in player list
+  useEffect(() => {
+    if (currentUserId && players.length > 0 && !currentUser && wsStatus === 'open') {
+      console.log("User not found in player list, retrying...");
+      const retryTimer = setTimeout(() => {
+        sendMessage({ type: 'get_lobby_members', code: lobbyId });
+      }, 1000);
+
+      return () => clearTimeout(retryTimer);
+    }
+  }, [currentUserId, players, currentUser, wsStatus, lobbyId, sendMessage]);
 
   // Request lobby members if not received after 1s
   useEffect(() => {
@@ -58,42 +84,62 @@ const WaitlistPage = () => {
     if (!lastMessage) return;
     try {
       const msg = JSON.parse(lastMessage);
+      console.log("Processing message in WaitlistPage:", msg);
+
+      // Set currentUserId if it's not set yet
+      if (!currentUserId) {
+        const storedId = localStorage.getItem('userId');
+        if (storedId) {
+          console.log("Setting currentUserId from localStorage:", storedId);
+          setCurrentUserId(storedId);
+        }
+      }
+
       if (msg.type === 'lobby_members' && msg.code === lobbyId) {
-        setPlayers(msg.members.map(p => ({
+        console.log("Received lobby_members:", msg.members);
+
+        // Map the members to players with proper structure
+        const updatedPlayers = msg.members.map(p => ({
           id: p.userId,
           name: p.username || `Player ${p.userId.substring(0, 4)}`,
+          isHost: p.isHost || false,
           isReady: !!p.isReady
-        })));
-        // Set currentUserId if not already set and userId is present in the list
-        if (!currentUserId && msg.members.length > 0) {
-          // Try to find the userId from a unique identifier (e.g., from localStorage or a welcome message)
+        }));
+
+        setPlayers(updatedPlayers);
+        console.log("Updated players:", updatedPlayers);
+
+        // If we don't have a currentUserId yet, try to get it from localStorage
+        if (!currentUserId) {
           const storedId = localStorage.getItem('userId');
-          if (storedId && msg.members.some(m => m.userId === storedId)) {
+          if (storedId) {
+            console.log("Setting currentUserId from localStorage after receiving lobby_members:", storedId);
             setCurrentUserId(storedId);
           }
         }
       }
       // Also update players on lobby_state_update (for ready state changes)
-      if (msg.type === 'lobby_state_update') {
+      else if (msg.type === 'lobby_state_update') {
         setPlayers(msg.players.map(p => ({
           id: p.userId || p.id,
           name: p.username || `Player ${(p.userId || p.id)?.substring(0, 4)}`,
+          isHost: p.isHost || false,
           isReady: !!p.isReady
         })));
         setLobbyName(msg.lobbyName);
         setCurrentUserId(msg.currentUserId);
-      } else if (msg.type === 'game_start_countdown') {
+      } 
+      else if (msg.type === 'game_start_countdown') {
         setIsStarting(true);
         setCountdown(msg.countdown);
-      } else if (msg.type === 'game_started') {
-        setTimeout(() => {
-          navigate(`/game/${lobbyId}`);
-        }, 2000); // 2 second delay before navigating
+      } 
+      else if (msg.type === 'game_started') {
+        navigate(`/game/${lobbyId}`);
       }
     } catch (e) {
       console.error("Failed to parse WebSocket message:", e);
     }
-  }, [lastMessage, lobbyId, navigate]);
+  }, [lastMessage, lobbyId, navigate, currentUserId]);
 
 
   useEffect(() => {
@@ -110,15 +156,37 @@ const WaitlistPage = () => {
 
   // --- EVENT HANDLERS (to be passed down as props) ---
   const handleReadyToggle = () => {
-    // This should ideally send a message to the WebSocket to update readiness on the server
-    // For now, we'll simulate the local update.
-    setPlayers(players.map(p => p.id === currentUserId ? { ...p, isReady: !p.isReady } : p));
+    if (!currentUserId || !lobbyId) return;
+
+    // Send a message to the WebSocket to update readiness on the server
+    sendMessage({
+      type: 'set_ready',
+      code: lobbyId,
+      userId: currentUserId,
+      ready: currentUser ? !currentUser.isReady : true
+    });
+
+    // Update local state for immediate feedback
+    setPlayers(players.map(p => 
+      p.id === currentUserId ? { ...p, isReady: !p.isReady } : p
+    ));
   };
 
   const handleNameChange = (newName) => {
-    // This should ideally send a message to the WebSocket to update name on the server
-    // For now, we'll simulate the local update.
-    setPlayers(players.map(p => p.id === currentUserId ? { ...p, name: newName } : p));
+    if (!currentUserId || !lobbyId) return;
+
+    // Send a message to the WebSocket to update name on the server
+    sendMessage({
+      type: 'set_name',
+      code: lobbyId,
+      userId: currentUserId,
+      username: newName
+    });
+
+    // Update local state for immediate feedback
+    setPlayers(players.map(p => 
+      p.id === currentUserId ? { ...p, name: newName } : p
+    ));
   };
 
   const handleStart = () => {
@@ -147,24 +215,21 @@ const WaitlistPage = () => {
 
       <main className="flex flex-grow flex-col justify-center p-4 md:p-6">
         <div className="mx-auto w-full max-w-2xl">
-          {/* If the user is already loaded and we're not waiting for their player data */}
-          {<PlayerWaitlistPage
-              players={players}
-              currentUser={currentUser}
-              lobbyCode={lobbyId}
-              isStarting={isStarting}
-              countdown={countdown}
-              onReadyToggle={handleReadyToggle}
-              onNameChange={handleNameChange}
-            />
-          }
-
-          {/* If the user is not yet loaded or we're still waiting for player data */}
-          {!currentUser && !isStarting && (
-            <div className="text-center text-gray-400">
-              Loading player data...
-            </div>
-          )}
+          {/* Always show PlayerWaitlistPage - simplified logic */}
+          <PlayerWaitlistPage
+            players={players}
+            currentUser={currentUser || {
+              id: currentUserId,
+              name: 'You',
+              isHost: true,
+              isReady: false
+            }}
+            lobbyCode={lobbyId}
+            isStarting={isStarting}
+            countdown={countdown}
+            onReadyToggle={handleReadyToggle}
+            onNameChange={handleNameChange}
+          />
 
           {/* COUNTDOWN IF STARTING */}
           {isStarting && (
