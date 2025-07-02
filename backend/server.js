@@ -100,11 +100,23 @@ function joinLobby(userId, code) {
         players[userId].lobbyCode = code;
         players[userId].isHost = false; // Not the host
         players[userId].ready = false; // Initialize ready state
+        players[userId].role = 'player'; // Set role to player when joining a lobby
 
         // Print to console
         console.log(`User ${userId} joined lobby ${code}`);
 
         // Broadcast updated lobby members to all clients in the same lobby
+        setTimeout(() => {
+            broadcastToLobby(code, "lobby_members", {
+                code,
+                members: lobbies[code].players.map(uid => ({
+                    userId: uid,
+                    username: players[uid]?.username || null,
+                    isHost: lobbies[code].host === uid,
+                    isReady: players[uid]?.ready || false
+                }))
+            });
+        }, 2000);
         broadcastToLobby(code, "lobby_members", {
             code,
             members: lobbies[code].players.map(uid => ({
