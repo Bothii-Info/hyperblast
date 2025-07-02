@@ -8,26 +8,26 @@ import { useWebSocket } from '../WebSocketContext';
  * The waitlist view specifically for a non-host player.
  */
 const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) => {
-  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [nameInputValue, setNameInputValue] = useState('');
-  // 30s countdown clock state
-  const [autoCountdown, setAutoCountdown] = useState(30);
-  const [autoCountdownActive, setAutoCountdownActive] = useState(true);
-  // 30s countdown effect for top right clock
-  useEffect(() => {
-    if (!autoCountdownActive) return;
-    if (autoCountdown > 0) {
-      const timer = setTimeout(() => setAutoCountdown(c => c - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (autoCountdown === 0 && autoCountdownActive) {
-      // Set all players to ready and start the game
-      if (players && players.length > 0 && currentUser && lobbyCode) {
-        sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
-      }
-      setAutoCountdownActive(false);
-    }
-  }, [autoCountdown, autoCountdownActive, players, currentUser, lobbyCode, sendMessage]);
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInputValue, setNameInputValue] = useState('');
+  // 30s countdown clock state
+  const [autoCountdown, setAutoCountdown] = useState(30);
+  const [autoCountdownActive, setAutoCountdownActive] = useState(true);
+  // 30s countdown effect for top right clock
+  useEffect(() => {
+    if (!autoCountdownActive) return;
+    if (autoCountdown > 0) {
+      const timer = setTimeout(() => setAutoCountdown(c => c - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (autoCountdown === 0 && autoCountdownActive) {
+      // Set all players to ready and start the game
+      if (players && players.length > 0 && currentUser && lobbyCode) {
+        sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
+      }
+      setAutoCountdownActive(false);
+    }
+  }, [autoCountdown, autoCountdownActive, players, currentUser, lobbyCode, sendMessage]);
   // NEW: A ref to hold the Audio object, preventing it from being re-created on every render.
   const countdownSoundRef = useRef(null);
   // NEW: A ref that acts as a flag to ensure the sound plays only once per countdown.
@@ -134,57 +134,57 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
     );
   }
 
-  return (
-    <>
-      {/* 30s countdown clock at top right */}
-      {autoCountdownActive && (
-        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
-          <div className="flex items-center gap-2 bg-gray-900/90 px-4 py-2 rounded-lg shadow text-white font-bold text-lg">
-            <span>Auto-Ready in</span>
-            <span className="text-yellow-400 font-mono">{autoCountdown}s</span>
-          </div>
-        </div>
-      )}
+  return (
+    <>
+      {/* 30s countdown clock at top right */}
+      {autoCountdownActive && (
+        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
+          <div className="flex items-center gap-2 bg-gray-900/90 px-4 py-2 rounded-lg shadow text-white font-bold text-lg">
+            <span>Auto-Ready in</span>
+            <span className="text-yellow-400 font-mono">{autoCountdown}s</span>
+          </div>
+        </div>
+      )}
 
-      <div className="space-y-3 rounded-lg bg-gray-800 p-4">
-        {players.map(player => (
-          <div key={player.id} className="flex items-center justify-between rounded-md bg-white/5 p-3">
-            <div className="flex items-center gap-3">
-              {player.isHost && <Crown size={20} className="text-yellow-400" />}
-              {isEditingName && player.id === currentUser.id ? (
-                <Input value={nameInputValue} onChange={(e) => setNameInputValue(e.target.value)} />
-              ) : (
-                <span className="font-semibold">{player.name} {player.id === currentUser.id && '(You)'}</span>
-              )}
-            </div>
-            <span className={`flex items-center gap-2 text-sm ${player.isReady ? 'text-green-400' : 'text-red-400'}`}>
-              {player.isReady ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-              {player.isReady ? 'Ready' : 'Not Ready'}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-6 space-y-3">
-        {isEditingName ? (
-          <>
-            <Button onClick={handleSaveName} className="bg-green-600 hover:bg-green-700">Save Name</Button>
-            <Button onClick={() => setIsEditingName(false)} className="bg-gray-600 hover:bg-gray-700">Cancel</Button>
-          </>
-        ) : (
-          <>
-            <Button onClick={handleReadyToggle} disabled={isEditingName} className={`flex items-center justify-center gap-2 ${currentUser?.isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}`}>
-              {currentUser?.isReady ? <XCircle size={20} /> : <CheckCircle2 size={20} />}
-              <span>{currentUser?.isReady ? 'Set to Not Ready' : 'Ready Up'}</span>
-            </Button>
-            <Button onClick={handleEditName} className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700">
-              <Pencil size={18} />
-              <span>Edit Name</span>
-            </Button>
-          </>
-        )}
-      </div>
-    </>
-  );
+      <div className="space-y-3 rounded-lg bg-gray-800 p-4">
+        {players.map(player => (
+          <div key={player.id} className="flex items-center justify-between rounded-md bg-white/5 p-3">
+            <div className="flex items-center gap-3">
+              {player.isHost && <Crown size={20} className="text-yellow-400" />}
+              {isEditingName && player.id === currentUser.id ? (
+                <Input value={nameInputValue} onChange={(e) => setNameInputValue(e.target.value)} />
+              ) : (
+                <span className="font-semibold">{player.name} {player.id === currentUser.id && '(You)'}</span>
+              )}
+            </div>
+            <span className={`flex items-center gap-2 text-sm ${player.isReady ? 'text-green-400' : 'text-red-400'}`}>
+              {player.isReady ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+              {player.isReady ? 'Ready' : 'Not Ready'}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 space-y-3">
+        {isEditingName ? (
+          <>
+            <Button onClick={handleSaveName} className="bg-green-600 hover:bg-green-700">Save Name</Button>
+            <Button onClick={() => setIsEditingName(false)} className="bg-gray-600 hover:bg-gray-700">Cancel</Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={handleReadyToggle} disabled={isEditingName} className={`flex items-center justify-center gap-2 ${currentUser?.isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}`}>
+              {currentUser?.isReady ? <XCircle size={20} /> : <CheckCircle2 size={20} />}
+              <span>{currentUser?.isReady ? 'Set to Not Ready' : 'Ready Up'}</span>
+            </Button>
+            <Button onClick={handleEditName} className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700">
+              <Pencil size={18} />
+              <span>Edit Name</span>
+            </Button>
+          </>
+        )}
+      </div>
+    </>
+  );
 };
 
 export default PlayerWaitlistPage;
