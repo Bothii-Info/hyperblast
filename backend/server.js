@@ -52,6 +52,7 @@ function tryStartGame() {
         broadcast("game_start", { message: "Game has started!" });
         // Start 100 second timer
         gameTimer = setTimeout(endGame, 30 * 1000);
+        console.log("Game has ended");
     }
 }
 
