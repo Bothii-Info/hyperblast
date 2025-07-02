@@ -1042,14 +1042,15 @@ const PlayerPage = () => {
   const handlePlayerHit = (personId) => {
     setShowHitIndicator('hit');
     setScore(s => {
-      // TODO: Add code for different gun classes and their score multipliers
-      const newScore = s + 50;
-      if (!ws) {
-        console.log('Websocket not working');
-      }
-      if (ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: 'score', score: newScore }));
-      }
+      // Use playerClass from localStorage if available
+      let classFromStorage = localStorage.getItem('playerClass');
+      let classToUse = (classFromStorage ? classFromStorage.toLowerCase() : 'pistol');
+      let increment = 10;
+      if (classToUse === 'archer') increment = 70;
+      else if (classToUse === 'shotgun') increment = 40;
+      // pistol is 10
+      const newScore = s + increment;
+      
       return newScore;
     });
   };
@@ -1058,9 +1059,13 @@ const PlayerPage = () => {
   const handleShoot = () => {
     if (health <= 0 || isMenuOpen || isReloading || gameStarting) return;
     setIsReloading(true);
-    setTimeout(() => setIsReloading(false), 2000); // 2 seconds reload
+    // Add code for the reload duration
+    let classFromStorage = localStorage.getItem('playerClass');
+    let increment = 1;
+    if (classFromStorage === 'archer') increment = 7;
+    else if (classFromStorage === 'shotgun') increment = 4;
+    setTimeout(() => setIsReloading(false), increment * 1000); // 2 seconds reload
     let hit = false;
-    let weapon = 'gun'; // Default weapon
 
     if (segmentationMask && detectedPeople.length > 0 && videoRef.current && canvasRef.current) {
       const video = videoRef.current;
@@ -1141,12 +1146,12 @@ const PlayerPage = () => {
       playSound(missSoundRef);
       setShowHitIndicator('miss');
       if (ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: 'miss', weapon }));
+        ws.send(JSON.stringify({ type: 'miss'}));
       }
     } else {
       if (ws && ws.readyState === 1) {
         console.log("Sending hit event to server");
-        ws.send(JSON.stringify({ type: 'hit', weapon }));
+        ws.send(JSON.stringify({ type: 'hit'}));
       }
     }
   };

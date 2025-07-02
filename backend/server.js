@@ -32,7 +32,8 @@ function updateLobbyStatus() {
             username: p.username,
             role: p.role,
             ready: p.ready || false,
-            score: p.score || 0
+            score: p.score || 0,
+            class: p.class || "pistol"
         }));
     broadcast("lobby_status", { players: lobbyStatus });
 }
@@ -97,7 +98,7 @@ function generateLobbyCode() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-function createLobby(hostUserId, maxPlayers = 8, name = "Lobby") {
+function createLobby(hostUserId, maxPlayers = 8, name = "Lobby", playerClass = "pistol") {
     const code = generateLobbyCode();
     lobbies[code] = {
         code,
@@ -111,11 +112,12 @@ function createLobby(hostUserId, maxPlayers = 8, name = "Lobby") {
     players[hostUserId].isHost = true; // Mark player as host
     players[hostUserId].ready = false; // Initialize ready state
     players[hostUserId].role = 'player'; // Set role to player when creating a lobby
-    console.log(`Lobby created: code=${code}, host=${hostUserId}, maxPlayers=${maxPlayers}, name=${name}`);
+    players[hostUserId].class = playerClass; // Set player class
+    console.log(`Lobby created: code=${code}, host=${hostUserId}, maxPlayers=${maxPlayers}, name=${name}, class=${playerClass}`);
     return code;
 }
 
-function joinLobby(userId, code) {
+function joinLobby(userId, code, playerClass = "pistol") {
     // Convert code to uppercase for case-insensitive matching
     code = code.toUpperCase();
 
@@ -131,9 +133,10 @@ function joinLobby(userId, code) {
         players[userId].isHost = false; // Not the host
         players[userId].ready = false; // Initialize ready state
         players[userId].role = 'player'; // Set role to player when joining a lobby
+        players[userId].class = playerClass;
 
         // Print to console
-        console.log(`User ${userId} joined lobby ${code}`);
+        console.log(`User ${userId} joined lobby ${code} as class ${playerClass}`);
 
         // Broadcast updated lobby members to all clients in the same lobby
         setTimeout(() => {
@@ -143,7 +146,8 @@ function joinLobby(userId, code) {
                     userId: uid,
                     username: players[uid]?.username || null,
                     isHost: lobbies[code].host === uid,
-                    isReady: players[uid]?.ready || false
+                    isReady: players[uid]?.ready || false,
+                    class: players[uid]?.class || "pistol"
                 }))
             });
         }, 2000);
@@ -153,7 +157,8 @@ function joinLobby(userId, code) {
                 userId: uid,
                 username: players[uid]?.username || null,
                 isHost: lobbies[code].host === uid,
-                isReady: players[uid]?.ready || false
+                isReady: players[uid]?.ready || false,
+                class: players[uid]?.class || "pistol"
             }))
         });
         return true;
@@ -219,11 +224,12 @@ wss.on('connection', function connection(ws) {
             case 'create_lobby': {
                 const maxPlayers = typeof data.maxPlayers === 'number' && data.maxPlayers > 4 ? data.maxPlayers : 8;
                 const name = typeof data.name === 'string' && data.name.trim() ? data.name.trim() : "Lobby";
+                const playerClass = ["archer", "pistol", "shotgun"].includes(data.class) ? data.class : "pistol";
                 if (typeof data.username === 'string' && data.username.trim()) {
                     player.username = data.username.trim();
                 }
-                const code = createLobby(userId, maxPlayers, name);
-                ws.send(JSON.stringify({ type: 'lobby_created', code, maxPlayers, name }));
+                const code = createLobby(userId, maxPlayers, name, playerClass);
+                ws.send(JSON.stringify({ type: 'lobby_created', code, maxPlayers, name, class: playerClass }));
                 showLobbies();
                 break;
             }
@@ -232,29 +238,28 @@ wss.on('connection', function connection(ws) {
                 if (typeof data.username === 'string' && data.username.trim()) {
                     player.username = data.username.trim();
                 }
-
                 const code = data.code.toUpperCase();
-
+                const playerClass = ["archer", "pistol", "shotgun"].includes(data.class) ? data.class : "pistol";
                 if (!lobbies[code]) {
                     console.log('Lobby not found for code:', code); // ADDED LOG
                     ws.send(JSON.stringify({ type: 'lobby_error', message: 'Lobby not found' }));
                     break;
                 }
-
                 if (lobbies[code].players.length >= lobbies[code].maxPlayers) {
                     console.log('Lobby is full for code:', code); // ADDED LOG
                     ws.send(JSON.stringify({ type: 'lobby_error', message: 'Lobby is full' }));
                     break;
                 }
-
-                if (joinLobby(userId, code)) {
+                if (joinLobby(userId, code, playerClass)) {
                     player.role = 'player'; // Set role to player when joining a lobby
+                    player.class = playerClass;
                     console.log('Sending lobby_joined for code:', code, 'to user:', userId); // ADDED LOG
                     ws.send(JSON.stringify({
                         type: 'lobby_joined',
                         code,
                         lobbyName: lobbies[code].name,
-                        isHost: lobbies[code].host === userId
+                        isHost: lobbies[code].host === userId,
+                        class: playerClass
                     }));
 
                     // Delay showLobbies to ensure lobby_joined is processed first
@@ -376,10 +381,16 @@ wss.on('connection', function connection(ws) {
             case 'hit':
 
                 // Increase score by 50 if weapon is gun
-                if (data.weapon === 'gun') {
-                    player.score = (player.score || 0) + 50;
-                    updateLobbyStatus();
+                if ( player.class === 'pistol') {
+                    player.score = (player.score || 0) + 10;
                 }
+                else if ( player.class === 'shotgun') {
+                    player.score = (player.score || 0) + 40;
+                }
+                else if ( player.class === 'archer') {
+                    player.score = (player.score || 0) + 70;
+                }
+                updateLobbyStatus();
                 break;
             case 'miss':
                 // No action for miss for now
