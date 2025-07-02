@@ -4,15 +4,7 @@ import Header from '../components/Header';
 import Button from '../components/Button';
 import Leaderboard from '../components/Leaderboard';
 import { Crown, Home, Eye } from 'lucide-react';
-
-// --- DUMMY DATA ---
-// This simulates the final results you would fetch from your backend.
-const finalPlayers = [
-  { id: 'p1', name: 'PlayerOne', score: 1750 },
-  { id: 'p2', name: 'PlayerTwo', score: 1300 },
-  { id: 'p3', name: 'PlayerThree', score: 950 },
-  { id: 'p4', name: 'PlayerFour', score: 800 },
-];
+import { useWebSocket } from '../WebSocketContext';
 
 /**
  * The post-game summary page.
@@ -23,15 +15,28 @@ const EndGamePage = () => {
   const navigate = useNavigate();
   const [winner, setWinner] = useState(null);
   const [leaderboardData, setLeaderboardData] = useState([]);
+  const { ws } = useWebSocket();
 
   useEffect(() => {
-    // For now, we use the dummy data.
-    const sortedPlayers = [...finalPlayers].sort((a, b) => b.score - a.score);
-    setLeaderboardData(sortedPlayers);
-    if (sortedPlayers.length > 0) {
-      setWinner(sortedPlayers[0]);
-    }
-  }, [gameId]);
+    if (!ws) return;
+    const handleMessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'lobby_status' && data.players) {
+          // players: array of { id, name, score }
+          const sortedPlayers = [...data.players].sort((a, b) => b.score - a.score);
+          setLeaderboardData(sortedPlayers);
+          if (sortedPlayers.length > 0) {
+            setWinner(sortedPlayers[0]);
+          }
+        }
+      } catch (e) {}
+    };
+    ws.addEventListener('message', handleMessage);
+    // Optionally, request the latest lobby status on mount
+    ws.send(JSON.stringify({ type: 'get_lobby_status', gameId }));
+    return () => ws.removeEventListener('message', handleMessage);
+  }, [ws, gameId]);
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-900 text-white">

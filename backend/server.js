@@ -325,6 +325,22 @@ wss.on('connection', function connection(ws) {
                 // No action for miss for now
                 break;
 
+            case 'get_lobby_status': {
+                // Respond with the current lobby's player list and scores
+                let code = data.gameId || player.lobbyCode;
+                if (code && lobbies[code]) {
+                    const playerList = lobbies[code].players.map(uid => ({
+                        id: uid,
+                        name: players[uid]?.username || null,
+                        score: players[uid]?.score || 0
+                    }));
+                    ws.send(JSON.stringify({ type: 'lobby_status', players: playerList }));
+                } else {
+                    ws.send(JSON.stringify({ type: 'lobby_status', players: [] }));
+                }
+                break;
+            }
+
             default:
                 console.warn("Unknown message type:", data.type);
         }
