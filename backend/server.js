@@ -42,13 +42,6 @@ function endGame() {
         setTimeout(() => {
             updateLobbyStatus();
         }, 3000);
-        // Optionally reset player ready states and scores
-        Object.values(players).forEach(p => {
-            if (p.role === 'player') {
-                p.ready = false;
-                p.score = 0;
-            }
-        });
     }
 }
 
