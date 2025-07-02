@@ -23,43 +23,43 @@ function broadcast(type, payload) {
 }
 
 function updateLobbyStatus() {
-    const lobbyStatus = Object.entries(players).map(([userId, p]) => ({
-        userId,
-        username: p.username || null,
-        role: p.role,
-        ready: p.ready || false,
-        score: p.score || 0
-    }));
+    const lobbyStatus = Object.entries(players)
+        .filter(([userId, p]) => userId && p.username && p.username.trim())
+        .map(([userId, p]) => ({
+            userId,
+            username: p.username,
+            role: p.role,
+            ready: p.ready || false,
+            score: p.score || 0
+        }));
     broadcast("lobby_status", { players: lobbyStatus });
 }
 
 function endGame() {
     if (gameStarted) {
         gameStarted = false;
-        clearTimeout(gameTimer);
+        if (gameTimer) clearTimeout(gameTimer);
         gameTimer = null;
-        broadcast("game_end", { message: "Game has ended!" });
+        // Send game_end to all players in all lobbies
+        Object.values(lobbies).forEach(lobby => {
+            broadcastToLobby(lobby.code, "game_end", { message: "Game has ended!" });
+        });
         setTimeout(() => {
             updateLobbyStatus();
         }, 3000);
-        // Optionally reset player ready states and scores
-        Object.values(players).forEach(p => {
-            if (p.role === 'player') {
-                p.ready = false;
-                p.score = 0;
-            }
-        });
     }
 }
 
 function tryStartGame() {
     const readyPlayers = Object.values(players).filter(p => p.role === 'player' && p.ready);
-    if (!gameStarted && readyPlayers.length >= 4) {
+    if (!gameStarted && readyPlayers.length >= 2) {
         gameStarted = true;
         broadcast("game_start", { message: "Game has started!" });
-        // Start 100 second timer
-        gameTimer = setTimeout(endGame, 30 * 1000);
+        // Start timer
+        gameTimer = setTimeout(endGame, 30000);
+        return true;
     }
+    return false;
 }
 
 function generateLobbyCode() {
@@ -80,6 +80,7 @@ function createLobby(hostUserId, maxPlayers = 8, name = "Lobby") {
     players[hostUserId].lobbyCode = code;
     players[hostUserId].isHost = true; // Mark player as host
     players[hostUserId].ready = false; // Initialize ready state
+    players[hostUserId].role = 'player'; // Set role to player when creating a lobby
     console.log(`Lobby created: code=${code}, host=${hostUserId}, maxPlayers=${maxPlayers}, name=${name}`);
     return code;
 }
@@ -319,11 +320,12 @@ wss.on('connection', function connection(ws) {
                             // After 3 seconds, start the game
                             setTimeout(() => {
                                 if (lobbies[code]) {
+                                    tryStartGame();
                                     gameStarted = true;
-                                    broadcastToLobby(code, "game_started", { code });
                                     console.log(`Game started in lobby ${code}`);
                                 }
                             }, 3000);
+
                         }
                     }
                 }
