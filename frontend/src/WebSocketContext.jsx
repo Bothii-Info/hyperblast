@@ -16,7 +16,7 @@ export function WebSocketProvider({ children }) {
     let wsUrl;
     // --- LOCAL TESTING ---
     // Uncomment the following line to force local WebSocket connection for testing:
-    wsUrl = 'ws://localhost:8080';
+    // wsUrl = 'ws://localhost:8080';
     // --- END LOCAL TESTING ---
     if (!wsUrl) {
       if (process.env.NODE_ENV === 'production') {
