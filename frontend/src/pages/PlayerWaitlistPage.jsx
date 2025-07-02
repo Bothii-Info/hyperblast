@@ -14,29 +14,50 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
   const [nameInputValue, setNameInputValue] = useState('');
   const [isFaceScanComplete, setIsFaceScanComplete] = useState(false);
   // 30s countdown clock state
-  const [autoCountdown, setAutoCountdown] = useState(30);
+  const [autoCountdown, setAutoCountdown] = useState(120);
   const [autoCountdownActive, setAutoCountdownActive] = useState(true);
   // 30s countdown effect for top right clock
+  // Track if we should show the scan face warning
+  const [showScanFaceWarning, setShowScanFaceWarning] = useState(false);
   useEffect(() => {
     if (!autoCountdownActive) return;
     if (autoCountdown > 0) {
       const timer = setTimeout(() => setAutoCountdown(c => c - 1), 1000);
       return () => clearTimeout(timer);
     } else if (autoCountdown === 0 && autoCountdownActive) {
-      // Set player to ready and stop countdown
+      // Only auto-ready if face is scanned
       if (players && players.length > 0 && currentUser && lobbyCode) {
-        sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
+        if (isFaceScanComplete) {
+          sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
+          setShowScanFaceWarning(false);
+        } else {
+          setShowScanFaceWarning(true);
+        }
       }
       setAutoCountdownActive(false);
     }
-  }, [autoCountdown, autoCountdownActive, players, currentUser, lobbyCode, sendMessage]);
+  }, [autoCountdown, autoCountdownActive, players, currentUser, lobbyCode, sendMessage, isFaceScanComplete]);
+
+  // If countdown reached 0 and face scan completes after, auto-ready
+  useEffect(() => {
+    if (
+      autoCountdown === 0 &&
+      !autoCountdownActive &&
+      showScanFaceWarning &&
+      isFaceScanComplete &&
+      players && players.length > 0 && currentUser && lobbyCode
+    ) {
+      sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
+      setShowScanFaceWarning(false);
+    }
+  }, [isFaceScanComplete, autoCountdown, autoCountdownActive, showScanFaceWarning, players, currentUser, lobbyCode, sendMessage]);
 
   // Restart timer if player goes from ready to not ready
   const prevIsReadyRef = useRef(currentUser?.isReady);
   useEffect(() => {
     if (!currentUser) return;
     if (prevIsReadyRef.current && !currentUser.isReady) {
-      setAutoCountdown(30);
+      setAutoCountdown(120);
       setAutoCountdownActive(true);
     }
     prevIsReadyRef.current = currentUser.isReady;
@@ -229,6 +250,9 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
         )}
       </div>
       <div className="mt-6 space-y-3">
+        {showScanFaceWarning && !isFaceScanComplete && (
+          <div className="text-center text-red-500 font-bold text-lg">Please scan your face before readying up!</div>
+        )}
         {isEditingName ? (
           <>
             <Button onClick={handleSaveName} className="bg-green-600 hover:bg-green-700">Save Name</Button>
