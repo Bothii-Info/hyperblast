@@ -6,7 +6,7 @@ export const classes = {
   Archer: {
     name: 'Archer',
     description: 'Long reload, high reward.',
-    stats: { reload: '5s', points: '70' },
+    stats: { reload: '7s', points: '70' },
     icon: <Target size={24} />,
     iconColor: 'text-green-400',
     color: 'border-green-500',
@@ -15,7 +15,7 @@ export const classes = {
   Shotgun: {
     name: 'Shotgun',
     description: 'Run n\' gun specialist.',
-    stats: { reload: '3s', points: '40' },
+    stats: { reload: '4s', points: '40' },
     icon: <Zap size={24} />,
     iconColor: 'text-orange-400',
     color: 'border-orange-500',

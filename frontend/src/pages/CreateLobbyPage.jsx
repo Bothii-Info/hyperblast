@@ -84,6 +84,8 @@ const CreateLobbyPage = () => {
       role: 'player',
       class: selectedClass.toLowerCase()
     });
+    
+    localStorage.setItem('playerClass', selectedClass.toLowerCase());
   };
 
   return (

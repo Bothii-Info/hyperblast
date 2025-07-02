@@ -35,25 +35,21 @@ const JoinLobbyPage = () => {
   }, [lastMessage, navigate, lobbyCode]);
 
   const handleJoinByCode = () => {
-    if (lobbyCode.trim() === '') {
-      alert('Please enter a lobby code to join.');
+    if (!lobbyCode.trim() || !username.trim()) {
+      alert('Please enter your username and a lobby code.');
       return;
     }
-    if (username.trim() === '') { // Validate username
-      alert('Please enter your username.');
-      return;
-    }
-    if (wsStatus !== 'open') {
-      alert('WebSocket not connected.');
-      return;
-    }
-    sendMessage({
+    const joinData = {
       type: 'join_lobby',
       code: lobbyCode.trim().toUpperCase(),
-      username: username.trim(), // Send username
-      role: 'player', // Ensure role is set to player
-      class: selectedClass.toLowerCase() // Use "class" and lowercase for backend
-    });
+      username: username.trim(),
+      class: selectedClass.toLowerCase(), // Use 'class' and lowercase for backend
+      role: 'player'
+    };
+    localStorage.setItem('playerClass', selectedClass.toLowerCase());
+    console.log("Joining Lobby with data:", joinData);
+    sendMessage(joinData);
+    navigate(`/lobby/${lobbyCode.trim().toUpperCase()}/waitlist`);
   };
 
   return (

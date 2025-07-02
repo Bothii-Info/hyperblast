@@ -528,13 +528,15 @@ const PlayerPage = () => {
   // Will add in functionality for it later
   const handlePlayerHit = (personId) => {
     setShowHitIndicator('hit');
-    setScore(s => { 
-      // TODO: Add code for different gun classes and their score multipliers
-      if (ws && ws.readyState === 1) {
-        console.log("Sending hit event to server");
-      }
-      // Add code for the dedicated weapon score incerases
-      const newScore = s + 50;
+    setScore(s => {
+      // Use playerClass from localStorage if available
+      let classFromStorage = localStorage.getItem('playerClass');
+      let classToUse = (classFromStorage ? classFromStorage.toLowerCase() : 'pistol');
+      let increment = 10;
+      if (classToUse === 'archer') increment = 70;
+      else if (classToUse === 'shotgun') increment = 40;
+      // pistol is 10
+      const newScore = s + increment;
       
       return newScore;
     });
@@ -545,7 +547,11 @@ const PlayerPage = () => {
     if (health <= 0 || isMenuOpen || isReloading || gameStarting) return;
     setIsReloading(true);
     // Add code for the reload duration
-    setTimeout(() => setIsReloading(false), 2000); // 2 seconds reload
+    let classFromStorage = localStorage.getItem('playerClass');
+    let increment = 1;
+    if (classFromStorage === 'archer') increment = 7;
+    else if (classFromStorage === 'shotgun') increment = 4;
+    setTimeout(() => setIsReloading(false), increment * 1000); // 2 seconds reload
     let hit = false;
 
     if (segmentationMask && detectedPeople.length > 0 && videoRef.current && canvasRef.current) {
