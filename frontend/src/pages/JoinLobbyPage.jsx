@@ -5,7 +5,7 @@ import  Button  from '../components/Button';
 import  Input  from '../components/Input';
 import { ClassSelector } from '../components/ClassSelector';
 import { Hash, LogIn } from 'lucide-react';
-// import { useWebSocket } from '../WebSocketContext';
+import { useWebSocket } from '../WebSocketContext';
 
 /**
  * Page for joining a lobby, now with class selection.
@@ -15,7 +15,7 @@ const JoinLobbyPage = () => {
   const [username, setUsername] = useState('');
   const [selectedClass, setSelectedClass] = useState('Pistol'); // Default class
   const navigate = useNavigate();
-  // const { sendMessage } = useWebSocket();
+  const { sendMessage } = useWebSocket();
 
   const handleJoinByCode = () => {
     if (!lobbyCode.trim() || !username.trim()) {
@@ -28,11 +28,11 @@ const JoinLobbyPage = () => {
       type: 'join_lobby',
       code: lobbyCode.trim().toUpperCase(),
       username: username.trim(),
-      playerClass: selectedClass, // Include the selected class
+      class: selectedClass.toLowerCase(), // Use 'class' and lowercase for backend
       role: 'player'
     };
     console.log("Joining Lobby with data:", joinData);
-    // sendMessage(joinData);
+    sendMessage(joinData);
 
     // Simulate successful join and navigate
     navigate(`/lobby/${lobbyCode.trim().toUpperCase()}/waitlist`);

@@ -5,7 +5,7 @@ import Button from '../components/Button';
 import  Input  from '../components/Input';
 import { ClassSelector } from '../components/ClassSelector';
 import { Users, Gamepad2, Swords, User } from 'lucide-react';
-// import { useWebSocket } from '../WebSocketContext'; // Assuming you have a WebSocket context
+import { useWebSocket } from '../WebSocketContext';
 
 /**
  * Page for creating a new game lobby with class selection.
@@ -17,7 +17,7 @@ const CreateLobbyPage = () => {
   const [selectedClass, setSelectedClass] = useState('Pistol'); // Default class
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  // const { sendMessage } = useWebSocket();
+  const { sendMessage } = useWebSocket();
 
   const handleCreateLobby = () => {
     if (!username.trim() || !lobbyName.trim()) {
@@ -25,26 +25,37 @@ const CreateLobbyPage = () => {
       return;
     }
     setIsLoading(true);
-
-    // --- BACKEND INTEGRATION GUIDE ---
-    // Send all relevant info, including the chosen class, to the backend.
     const lobbyData = {
       type: 'create_lobby',
       name: lobbyName.trim(),
       maxPlayers: maxPlayers,
       username: username.trim(),
-      playerClass: selectedClass, // Include the selected class
+      class: selectedClass.toLowerCase(), // Use "class" and lowercase for backend
       role: 'player'
     };
     console.log("Creating Lobby with data:", lobbyData);
-    // sendMessage(lobbyData);
-    
-    // Simulate backend response and navigate
-    setTimeout(() => {
-        const fakeLobbyCode = "HBLAST1";
-        navigate(`/lobby/${fakeLobbyCode}/waitlist`);
-    }, 1000);
+    sendMessage(lobbyData);
+    // Wait for lobby_created message from backend to get the real code
   };
+
+  // Listen for lobby_created and navigate
+  React.useEffect(() => {
+    const handleLobbyCreated = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'lobby_created' && data.code) {
+          navigate(`/lobby/${data.code}/waitlist`);
+        }
+      } catch (e) {}
+    };
+    const ws = (window.__WS__ && window.__WS__.current) || (window.ws && window.ws.current);
+    if (ws && ws.addEventListener) {
+      ws.addEventListener('message', handleLobbyCreated);
+      return () => ws.removeEventListener('message', handleLobbyCreated);
+    }
+    // If using context, listen via WebSocketContext
+    return undefined;
+  }, [navigate]);
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#2c1a4d] to-[#100c28] text-white">
