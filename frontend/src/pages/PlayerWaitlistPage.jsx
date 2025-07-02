@@ -5,8 +5,8 @@ import Input from '../components/Input';
 import { useWebSocket } from '../WebSocketContext';
 
 /**
- * The waitlist view specifically for a non-host player.
- */
+ * The waitlist view specifically for a non-host player.
+ */
 const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) => {
   const { sendMessage, lastMessage, wsStatus } = useWebSocket();
   const [isEditingName, setIsEditingName] = useState(false);
@@ -24,7 +24,6 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
       // Set all players to ready and start the game
       if (players && players.length > 0 && currentUser && lobbyCode) {
         sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
-        sendMessage({ type: 'start_game', code: lobbyCode });
       }
       setAutoCountdownActive(false);
     }
@@ -34,11 +33,11 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
   // NEW: A ref that acts as a flag to ensure the sound plays only once per countdown.
   const countdownPlayed = useRef(false);
 
-  useEffect(() => {
-    if (currentUser) {
-      setNameInputValue(currentUser.name);
-    }
-  }, [currentUser]);
+  useEffect(() => {
+    if (currentUser) {
+      setNameInputValue(currentUser.name);
+    }
+  }, [currentUser]);
 
   // NEW: This effect hook runs only once on mount to create the audio object.
   useEffect(() => {
@@ -55,9 +54,9 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
   }, []); // NEW: The empty dependency array ensures this effect runs only once.
 
   // This useEffect block handles playing the sound when the 'isStarting' prop changes.
-  useEffect(() => {
+  useEffect(() => {
     // NEW: Check if the countdown is starting AND if the sound has not already been played for this sequence.
-    if (isStarting && !countdownPlayed.current) {
+    if (isStarting && !countdownPlayed.current) {
       // NEW: Check that the audio object has been loaded before attempting to play it.
       if (countdownSoundRef.current) {
         countdownSoundRef.current.volume = 0.7; // Set volume to a reasonable level
@@ -66,74 +65,74 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
         // NEW: Set the flag to true to prevent the sound from playing again during this countdown.
         countdownPlayed.current = true;
       }
-    } else if (!isStarting) {
+    } else if (!isStarting) {
       // NEW: If the countdown is over or cancelled, reset the flag for the next game.
       countdownPlayed.current = false;
     }
-  }, [isStarting]);
+  }, [isStarting]);
 
-  const handleEditName = () => {
-    if (currentUser) { // Ensure currentUser exists before setting input value
-      setNameInputValue(currentUser.name);
-      setIsEditingName(true);
-    }
-  };
+  const handleEditName = () => {
+    if (currentUser) { // Ensure currentUser exists before setting input value
+      setNameInputValue(currentUser.name);
+      setIsEditingName(true);
+    }
+  };
 
-  const handleSaveName = () => {
-    if (nameInputValue.trim() !== '') {
-      onNameChange(nameInputValue.trim());
-      setIsEditingName(false);
-    }
-  };
-  
-  // Function to handle ready toggle with WebSocket
-  const handleReadyToggle = () => {
-    if (currentUser && lobbyCode) {
-      sendMessage({ 
-        type: 'set_ready', 
-        code: lobbyCode,
-        ready: !currentUser.isReady 
-      });
-    } else {
-      // Fall back to the passed onReadyToggle if no WebSocket or missing data
-      onReadyToggle();
-    }
-  };
+  const handleSaveName = () => {
+    if (nameInputValue.trim() !== '') {
+      onNameChange(nameInputValue.trim());
+      setIsEditingName(false);
+    }
+  };
+  
+  // Function to handle ready toggle with WebSocket
+  const handleReadyToggle = () => {
+    if (currentUser && lobbyCode) {
+      sendMessage({ 
+        type: 'set_ready', 
+        code: lobbyCode,
+        ready: !currentUser.isReady 
+      });
+    } else {
+      // Fall back to the passed onReadyToggle if no WebSocket or missing data
+      onReadyToggle();
+    }
+  };
 
-  if (!currentUser && !isStarting) { // Added a check for currentUser to prevent rendering issues before data loads
-    return (
-      <div className="text-center text-gray-400">
-        Loading player data...
-      </div>
-    );
-  }
+  if (!currentUser && !isStarting) { // Added a check for currentUser to prevent rendering issues before data loads
+    return (
+      <div className="text-center text-gray-400">
+        Loading player data...
+      </div>
+    );
+  }
 
-  if (isStarting) {
-    return (
-      <div className="text-center">
-        <div className="relative mx-auto h-32 w-32">
-            <svg className="h-full w-full" viewBox="0 0 100 100">
-                <circle className="stroke-current text-gray-700" strokeWidth="10" cx="50" cy="50" r="40" fill="transparent"></circle>
-                <circle
-                    className="stroke-current text-indigo-500 transition-all duration-1000 linear"
-                    strokeWidth="10"
-                    strokeDasharray="251.2"
-                    strokeDashoffset={251.2 - (countdown / 3) * 251.2}
-                    strokeLinecap="round"
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="transparent"
-                    transform="rotate(-90 50 50)"
-                ></circle>
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center text-4xl font-bold">{countdown}</div>
-        </div>
-        <h3 className="mt-4 text-2xl font-bold">Game Starting...</h3>
-        <p className="text-gray-400">Get ready!</p>
-      </div>
-    );
-  }
+  if (isStarting) {
+    return (
+      <div className="text-center">
+        <div className="relative mx-auto h-32 w-32">
+            <svg className="h-full w-full" viewBox="0 0 100 100">
+                <circle className="stroke-current text-gray-700" strokeWidth="10" cx="50" cy="50" r="40" fill="transparent"></circle>
+                <circle
+                    className="stroke-current text-indigo-500 transition-all duration-1000 linear"
+                    strokeWidth="10"
+                    strokeDasharray="251.2"
+                    strokeDashoffset={251.2 - (countdown / 3) * 251.2}
+                    strokeLinecap="round"
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    fill="transparent"
+                    transform="rotate(-90 50 50)"
+                ></circle>
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center text-4xl font-bold">{countdown}</div>
+        </div>
+        <h3 className="mt-4 text-2xl font-bold">Game Starting...</h3>
+        <p className="text-gray-400">Get ready!</p>
+      </div>
+    );
+  }
 
   return (
     <>

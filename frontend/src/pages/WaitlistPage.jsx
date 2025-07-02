@@ -46,7 +46,7 @@ const WaitlistPage = () => {
 
   // Request lobby members if not received after 1s
   useEffect(() => {
-    if (wsStatus === 'open' && lobbyId && players.length === 0) {
+    if (wsStatus === 'open' && lobbyId && players.length <2 ) {
       const timeout = setTimeout(() => {
         sendMessage({ type: 'get_lobby_members', code: lobbyId });
       }, 1000);

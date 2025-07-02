@@ -89,9 +89,6 @@ const PlayerPage = () => {
         setGameTime(prevTime => {
           if (prevTime <= 1) {
             clearInterval(timerInterval);
-            setTimeout(() => {
-              navigate(`/game/${gameId}/end`);
-            }, 2000); // Wait 2 seconds before navigating
             return 0;
           }
           return prevTime - 1;
@@ -109,6 +106,7 @@ const PlayerPage = () => {
     if (!ws) return;
     const handleMessage = (event) => {
       try {
+        console.log("Received message:", event.data); // Log received message
         const data = JSON.parse(event.data);
         if (data.type === 'game_end') {
           navigate(`/game/${gameId}/end`);
