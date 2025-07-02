@@ -501,6 +501,29 @@ const PlayerPage = () => {
 
   // --- Reload State ---
   const [isReloading, setIsReloading] = useState(false);
+  const [reloadOffset, setReloadOffset] = useState(251.2);
+  const [circleTransition, setCircleTransition] = useState('none');
+  const CIRCLE_CIRCUMFERENCE = 251.2; // 2 * PI * 40
+
+  useEffect(() => {
+    let offsetTimer;
+    if (isReloading) {
+      // Start animation from full to empty
+      setCircleTransition('stroke-dashoffset 2s linear');
+      offsetTimer = setTimeout(() => {
+        setReloadOffset(0);
+      }, 10);
+    } else {
+      // Wait for the animation to finish before resetting the offset (so it doesn't snap back during the reload)
+      offsetTimer = setTimeout(() => {
+        setCircleTransition('none');
+        setReloadOffset(CIRCLE_CIRCUMFERENCE);
+      }, 200); // Wait a short moment after reload ends before resetting
+    }
+    return () => {
+      clearTimeout(offsetTimer);
+    };
+  }, [isReloading, CIRCLE_CIRCUMFERENCE]);
 
   // --- Event Handlers ---
   // Using personId for now
@@ -693,12 +716,41 @@ const PlayerPage = () => {
           <button onClick={() => setIsMenuOpen(true)} className="rounded-lg bg-black/50 p-2 backdrop-blur-sm"><Menu size={24} /></button>
         </div>
         <div className="flex flex-col items-center gap-3">
-          <button onClick={handleShoot} disabled={health <= 0 || isMenuOpen || gameStarting || isReloading} className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white/50 bg-red-600/80 text-white transition-transform active:scale-90 disabled:cursor-not-allowed disabled:bg-gray-700/80 relative">
-            <Crosshair size={48} />
-            {isReloading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-full z-10">
-                <span className="text-lg font-bold animate-pulse">RELOADING...</span>
-              </div>
+          <button 
+            onClick={handleShoot} 
+            disabled={health <= 0 || isMenuOpen || gameStarting || isReloading}
+            className={`
+              flex h-24 w-24 items-center justify-center rounded-full border-4 border-white/50
+              text-white transition-transform active:scale-90 disabled:cursor-not-allowed
+              relative
+              ${isReloading ? 'bg-gray-700/80' : 'bg-red-600/80'}
+            `}
+          >
+            {isReloading ? (
+              <>
+                {/* SVG for circular progress animation */}
+                <svg className="absolute top-0 left-0 h-full w-full" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle
+                    className="stroke-current text-white/20"
+                    strokeWidth="8" cx="50" cy="50" r="40" fill="transparent"
+                  />
+                  <circle
+                    className="stroke-current text-red-500"
+                    strokeWidth="8"
+                    strokeDasharray={CIRCLE_CIRCUMFERENCE}
+                    strokeDashoffset={reloadOffset}
+                    strokeLinecap="round"
+                    cx="50" cy="50" r="40" fill="transparent"
+                    style={{ transition: circleTransition }}
+                  />
+                </svg>
+                {/* Text content centered on top of the animation */}
+                <div className="relative z-10 flex h-full w-full items-center justify-center">
+                    <span className="text-lg font-bold animate-pulse">RELOADING...</span>
+                </div>
+              </>
+            ) : (
+              <Crosshair size={48} />
             )}
           </button>
         </div>
