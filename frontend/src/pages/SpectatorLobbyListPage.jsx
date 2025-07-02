@@ -5,14 +5,6 @@ import Button from '../components/Button';
 import { Users, Signal } from 'lucide-react';
 import { useWebSocket } from '../WebSocketContext';
 
-// --- DUMMY DATA ---
-// In a real application, you would fetch this data from your backend.
-const dummyLobbies = [
-  { id: 'lobby-alpha-123', name: "Rooftop Rumble", players: 5, maxPlayers: 10, status: 'In Progress' },
-  { id: 'lobby-beta-456', name: "Office Warfare", players: 8, maxPlayers: 8, status: 'In Progress' },
-  { id: 'lobby-gamma-789', name: "Midnight Mayhem", players: 3, maxPlayers: 12, status: 'Waiting' },
-];
-
 /**
  * Page to display a list of active game lobbies for spectators.
  */
