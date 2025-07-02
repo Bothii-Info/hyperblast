@@ -23,13 +23,15 @@ function broadcast(type, payload) {
 }
 
 function updateLobbyStatus() {
-    const lobbyStatus = Object.entries(players).map(([userId, p]) => ({
-        userId,
-        username: p.username || null,
-        role: p.role,
-        ready: p.ready || false,
-        score: p.score || 0
-    }));
+    const lobbyStatus = Object.entries(players)
+        .filter(([userId, p]) => userId && p.username && p.username.trim())
+        .map(([userId, p]) => ({
+            userId,
+            username: p.username,
+            role: p.role,
+            ready: p.ready || false,
+            score: p.score || 0
+        }));
     broadcast("lobby_status", { players: lobbyStatus });
 }
 
