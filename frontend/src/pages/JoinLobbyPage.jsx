@@ -15,27 +15,45 @@ const JoinLobbyPage = () => {
   const [username, setUsername] = useState('');
   const [selectedClass, setSelectedClass] = useState('Pistol'); // Default class
   const navigate = useNavigate();
-  const { sendMessage } = useWebSocket();
+
+  const { sendMessage, lastMessage, wsStatus, ws } = useWebSocket();
+
+  React.useEffect(() => {
+    if (!lastMessage) return;
+    try {
+      const msg = JSON.parse(lastMessage);
+      console.log(msg);
+      if (msg.type === 'lobby_joined') {
+
+        // Use the code from the message, or fallback to the entered code
+        const code = msg.code || lobbyCode.trim().toUpperCase();
+        navigate(`/lobby/${code}/waitlist`);
+      } else if (msg.type === 'lobby_error') {
+        alert(msg.message || 'Failed to join lobby.');
+      }
+    } catch (e) {}
+  }, [lastMessage, navigate, lobbyCode]);
 
   const handleJoinByCode = () => {
-    if (!lobbyCode.trim() || !username.trim()) {
-      alert('Please enter your username and a lobby code.');
+    if (lobbyCode.trim() === '') {
+      alert('Please enter a lobby code to join.');
       return;
     }
-
-    // --- BACKEND INTEGRATION GUIDE ---
-    const joinData = {
+    if (username.trim() === '') { // Validate username
+      alert('Please enter your username.');
+      return;
+    }
+    if (wsStatus !== 'open') {
+      alert('WebSocket not connected.');
+      return;
+    }
+    sendMessage({
       type: 'join_lobby',
       code: lobbyCode.trim().toUpperCase(),
-      username: username.trim(),
-      class: selectedClass.toLowerCase(), // Use 'class' and lowercase for backend
-      role: 'player'
-    };
-    console.log("Joining Lobby with data:", joinData);
-    sendMessage(joinData);
-
-    // Simulate successful join and navigate
-    navigate(`/lobby/${lobbyCode.trim().toUpperCase()}/waitlist`);
+      username: username.trim(), // Send username
+      role: 'player', // Ensure role is set to player
+      class: selectedClass.toLowerCase() // Use "class" and lowercase for backend
+    });
   };
 
   return (
