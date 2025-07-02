@@ -9,7 +9,7 @@ import PlayerWaitlistPage from './PlayerWaitlistPage'; // Import PlayerWaitlistP
 /**
  * This component acts as a controller. It fetches shared data
  * and then renders either the Host or Player view.
- */
+ */ 
 const WaitlistPage = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
@@ -39,11 +39,20 @@ const WaitlistPage = () => {
       if (storedId) {
         setCurrentUserId(storedId);
       }
-      
       // Request lobby members
       sendMessage({ type: 'get_lobby_members', code: lobbyId });
     }
   }, [wsStatus, lobbyId, sendMessage]);
+
+  // Request lobby members if not received after 1s
+  useEffect(() => {
+    if (wsStatus === 'open' && lobbyId && players.length === 0) {
+      const timeout = setTimeout(() => {
+        sendMessage({ type: 'get_lobby_members', code: lobbyId });
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [wsStatus, lobbyId, players.length, sendMessage]);
 
   useEffect(() => {
     if (!lastMessage) return;
