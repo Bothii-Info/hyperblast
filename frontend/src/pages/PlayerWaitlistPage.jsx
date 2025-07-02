@@ -2,65 +2,33 @@ import React, { useState, useEffect, useRef } from 'react'; // NEW: Added useRef
 import { Crown, CheckCircle2, XCircle, Pencil } from 'lucide-react';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import PlayerScan from '../components/PlayerScan';
 import { useWebSocket } from '../WebSocketContext';
 
 /**
  * The waitlist view specifically for a non-host player.
  */
 const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) => {
-  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [nameInputValue, setNameInputValue] = useState('');
-  // 30s countdown clock state
-  const [autoCountdown, setAutoCountdown] = useState(30);
-  const countdownTimerRef = useRef(null);
-  // Track previous ready state to detect changes
-  const prevIsReadyRef = useRef(currentUser?.isReady);
-
-  // Effect: handle countdown logic based on currentUser.isReady
-  useEffect(() => {
-    if (!currentUser) return;
-    // If player is ready, stop countdown
-    if (currentUser.isReady) {
-      if (countdownTimerRef.current) {
-        clearTimeout(countdownTimerRef.current);
-        countdownTimerRef.current = null;
-      }
-      setAutoCountdown(30); // Optionally reset for next time
-    } else {
-      // If player is not ready, start/restart countdown
-      if (!countdownTimerRef.current) {
-        setAutoCountdown(30);
-      }
-    }
-  }, [currentUser]);
-
-  // Effect: run the countdown if not ready
-  useEffect(() => {
-    if (!currentUser || currentUser.isReady) return;
-    if (autoCountdown > 0) {
-      countdownTimerRef.current = setTimeout(() => setAutoCountdown(c => c - 1), 1000);
-      return () => clearTimeout(countdownTimerRef.current);
-    } else if (autoCountdown === 0) {
-      // Set player to ready and stop countdown
-      if (players && players.length > 0 && currentUser && lobbyCode) {
-        sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
-      }
-      if (countdownTimerRef.current) {
-        clearTimeout(countdownTimerRef.current);
-        countdownTimerRef.current = null;
-      }
-    }
-  }, [autoCountdown, currentUser, players, lobbyCode, sendMessage]);
-
-  // Effect: if player toggles from ready to not ready, restart countdown
-  useEffect(() => {
-    if (!currentUser) return;
-    if (prevIsReadyRef.current && !currentUser.isReady) {
-      setAutoCountdown(30);
-    }
-    prevIsReadyRef.current = currentUser.isReady;
-  }, [currentUser]);
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInputValue, setNameInputValue] = useState('');
+  // 30s countdown clock state
+  const [autoCountdown, setAutoCountdown] = useState(30);
+  const [autoCountdownActive, setAutoCountdownActive] = useState(true);
+  // 30s countdown effect for top right clock
+  useEffect(() => {
+    if (!autoCountdownActive) return;
+    if (autoCountdown > 0) {
+      const timer = setTimeout(() => setAutoCountdown(c => c - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (autoCountdown === 0 && autoCountdownActive) {
+      // Set all players to ready and start the game
+      if (players && players.length > 0 && currentUser && lobbyCode) {
+        sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
+      }
+      setAutoCountdownActive(false);
+    }
+  }, [autoCountdown, autoCountdownActive, players, currentUser, lobbyCode, sendMessage]);
   // NEW: A ref to hold the Audio object, preventing it from being re-created on every render.
   const countdownSoundRef = useRef(null);
   // NEW: A ref that acts as a flag to ensure the sound plays only once per countdown.
@@ -73,6 +41,19 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
   useEffect(() => {
     if (currentUser) {
       setNameInputValue(currentUser.name);
+
+      // Check if face scan is already complete for this user in this session
+      try {
+        const sessionKey = `playerFaces_${lobbyCode}`;
+        const playerFaces = JSON.parse(localStorage.getItem(sessionKey) || '{}');
+        const userId = localStorage.getItem('userId');
+        if (userId && playerFaces[userId]) {
+          setIsFaceScanComplete(true);
+          console.log(`Face scan already complete for user ${currentUser.name} in session ${lobbyCode}`);
+        }
+      } catch (e) {
+        console.error("Error checking face scan status:", e);
+      }
     }
   }, [currentUser]);
 
@@ -225,6 +206,16 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
           </div>
         ))}
       </div>
+      <div className="mt-4">
+        {/* Face scanning section - only show for the current user */}
+        {currentUser && !isStarting && (
+          <PlayerScan 
+            username={currentUser.name}
+            lobbyCode={lobbyCode}
+            onScanComplete={() => setIsFaceScanComplete(true)}
+          />
+        )}
+      </div>
       <div className="mt-6 space-y-3">
         {isEditingName ? (
           <>
@@ -233,7 +224,7 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
           </>
         ) : (
           <>
-            <Button onClick={handleReadyToggle} disabled={isEditingName} className={`flex items-center justify-center gap-2 ${currentUser?.isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}`}>
+            <Button onClick={handleReadyToggle} disabled={isEditingName || !isFaceScanComplete} className={`flex items-center justify-center gap-2 ${currentUser?.isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'} ${!isFaceScanComplete ? 'opacity-50 cursor-not-allowed' : ''}`}>
               {currentUser?.isReady ? <XCircle size={20} /> : <CheckCircle2 size={20} />}
               <span>{currentUser?.isReady ? 'Set to Not Ready' : 'Ready Up'}</span>
             </Button>
