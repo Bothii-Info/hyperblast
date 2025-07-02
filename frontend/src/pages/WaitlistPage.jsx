@@ -77,7 +77,9 @@ const WaitlistPage = () => {
         setIsStarting(true);
         setCountdown(msg.countdown);
       } else if (msg.type === 'game_started') {
-        navigate(`/game/${lobbyId}`);
+        setTimeout(() => {
+          navigate(`/game/${lobbyId}`);
+        }, 2000); // 2 second delay before navigating
       }
     } catch (e) {
       console.error("Failed to parse WebSocket message:", e);
@@ -90,7 +92,9 @@ const WaitlistPage = () => {
     if (isStarting && countdown > 0) {
       timerId = setInterval(() => setCountdown(prev => prev - 1), 1000);
     } else if (isStarting && countdown === 0) {
-      navigate(`/game/${lobbyId}`);
+      setTimeout(() => {
+        navigate(`/game/${lobbyId}`);
+      }, 1000); // 1 second delay before navigating
     }
     return () => clearInterval(timerId);
   }, [isStarting, countdown, lobbyId, navigate]);

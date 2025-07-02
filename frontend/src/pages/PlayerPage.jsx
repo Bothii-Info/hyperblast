@@ -28,7 +28,7 @@ const PlayerPage = () => {
   // --- Game State ---
   const [health, setHealth] = useState(100);
   const [score, setScore] = useState(0);
-  const [gameTime, setGameTime] = useState(30);
+  const [gameTime, setGameTime] = useState(300);
   const [showHitIndicator, setShowHitIndicator] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [gameStarting, setGameStarting] = useState(false);
@@ -89,7 +89,9 @@ const PlayerPage = () => {
         setGameTime(prevTime => {
           if (prevTime <= 1) {
             clearInterval(timerInterval);
-            navigate(`/game/${gameId}/end`);
+            setTimeout(() => {
+              navigate(`/game/${gameId}/end`);
+            }, 2000); // Wait 2 seconds before navigating
             return 0;
           }
           return prevTime - 1;
@@ -100,24 +102,7 @@ const PlayerPage = () => {
   }, [gameId, navigate, isMenuOpen]);
 
   // --- Use WebSocket from context ---
-  const { ws, wsStatus, lastMessage } = useWebSocket();
-
-  // Listen for game_end message from server
-  useEffect(() => {
-    if (!ws) return;
-    const handleMessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'game_end') {
-          navigate(`/game/${gameId}/end`);
-        }
-      } catch (e) {}
-    };
-    ws.addEventListener('message', handleMessage);
-    return () => {
-      ws.removeEventListener('message', handleMessage);
-    };
-  }, [ws, navigate, gameId]);
+  const { ws, wsStatus } = useWebSocket();
 
   // Load TensorFlow.js and COCO-SSD model
   useEffect(() => {
@@ -632,11 +617,11 @@ const PlayerPage = () => {
     }
   }, [showHitIndicator]);
   
-  // useEffect(() => { 
-  //   if (health <= 0) { 
-  //     setTimeout(() => navigate(`/game/${gameId}/end`), 1500); 
-  //   } 
-  // }, [health, gameId, navigate]);
+  useEffect(() => { 
+    if (health <= 0) { 
+      setTimeout(() => navigate(`/game/${gameId}/end`), 1500); 
+    } 
+  }, [health, gameId, navigate]);
 
   const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 

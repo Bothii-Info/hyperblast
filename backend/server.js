@@ -39,9 +39,6 @@ function endGame() {
         clearTimeout(gameTimer);
         gameTimer = null;
         broadcast("game_end", { message: "Game has ended!" });
-        setTimeout(() => {
-            updateLobbyStatus();
-        }, 3000);
         // Optionally reset player ready states and scores
         Object.values(players).forEach(p => {
             if (p.role === 'player') {
@@ -49,6 +46,7 @@ function endGame() {
                 p.score = 0;
             }
         });
+        updateLobbyStatus();
     }
 }
 
@@ -58,7 +56,7 @@ function tryStartGame() {
         gameStarted = true;
         broadcast("game_start", { message: "Game has started!" });
         // Start 100 second timer
-        gameTimer = setTimeout(endGame, 30 * 1000);
+        gameTimer = setTimeout(endGame, 100 * 1000);
     }
 }
 
@@ -217,7 +215,7 @@ wss.on('connection', function connection(ws) {
                     // Delay showLobbies to ensure lobby_joined is processed first
                     setTimeout(() => {
                         showLobbies();
-                    }, 100); // 100ms delay
+                    }, 300); // 100ms delay
                 } else {
                     console.log('Could not join lobby for code:', code, 'user:', userId); // ADDED LOG
                     ws.send(JSON.stringify({ type: 'lobby_error', message: 'Could not join lobby' }));
@@ -324,22 +322,6 @@ wss.on('connection', function connection(ws) {
             case 'miss':
                 // No action for miss for now
                 break;
-
-            case 'get_lobby_status': {
-                // Respond with the current lobby's player list and scores
-                let code = data.gameId || player.lobbyCode;
-                if (code && lobbies[code]) {
-                    const playerList = lobbies[code].players.map(uid => ({
-                        id: uid,
-                        name: players[uid]?.username || null,
-                        score: players[uid]?.score || 0
-                    }));
-                    ws.send(JSON.stringify({ type: 'lobby_status', players: playerList }));
-                } else {
-                    ws.send(JSON.stringify({ type: 'lobby_status', players: [] }));
-                }
-                break;
-            }
 
             default:
                 console.warn("Unknown message type:", data.type);
