@@ -8,9 +8,27 @@ import { useWebSocket } from '../WebSocketContext';
  * The waitlist view specifically for a non-host player.
  */
 const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) => {
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInputValue, setNameInputValue] = useState('');
-  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
+  // 30s countdown clock state
+  const [autoCountdown, setAutoCountdown] = useState(30);
+  const [autoCountdownActive, setAutoCountdownActive] = useState(true);
+  // 30s countdown effect for top right clock
+  useEffect(() => {
+    if (!autoCountdownActive) return;
+    if (autoCountdown > 0) {
+      const timer = setTimeout(() => setAutoCountdown(c => c - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (autoCountdown === 0 && autoCountdownActive) {
+      // Set all players to ready and start the game
+      if (players && players.length > 0 && currentUser && lobbyCode) {
+        sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
+        sendMessage({ type: 'start_game', code: lobbyCode });
+      }
+      setAutoCountdownActive(false);
+    }
+  }, [autoCountdown, autoCountdownActive, players, currentUser, lobbyCode, sendMessage]);
   // NEW: A ref to hold the Audio object, preventing it from being re-created on every render.
   const countdownSoundRef = useRef(null);
   // NEW: A ref that acts as a flag to ensure the sound plays only once per countdown.
@@ -119,6 +137,16 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
 
   return (
     <>
+      {/* 30s countdown clock at top right */}
+      {autoCountdownActive && (
+        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
+          <div className="flex items-center gap-2 bg-gray-900/90 px-4 py-2 rounded-lg shadow text-white font-bold text-lg">
+            <span>Auto-Ready in</span>
+            <span className="text-yellow-400 font-mono">{autoCountdown}s</span>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3 rounded-lg bg-gray-800 p-4">
         {players.map(player => (
           <div key={player.id} className="flex items-center justify-between rounded-md bg-white/5 p-3">
