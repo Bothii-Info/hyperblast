@@ -89,9 +89,6 @@ const PlayerPage = () => {
         setGameTime(prevTime => {
           if (prevTime <= 1) {
             clearInterval(timerInterval);
-            setTimeout(() => {
-              navigate(`/game/${gameId}/end`);
-            }, 2000); // Wait 2 seconds before navigating
             return 0;
           }
           return prevTime - 1;
