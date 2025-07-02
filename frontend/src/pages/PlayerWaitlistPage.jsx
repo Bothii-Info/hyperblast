@@ -9,10 +9,10 @@ import { useWebSocket } from '../WebSocketContext';
  * The waitlist view specifically for a non-host player.
  */
 const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, countdown, onReadyToggle, onNameChange }) => {
+  const { sendMessage, lastMessage, wsStatus } = useWebSocket();
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInputValue, setNameInputValue] = useState('');
   const [isFaceScanComplete, setIsFaceScanComplete] = useState(false);
-  const { sendMessage, lastMessage, wsStatus, ws } = useWebSocket();
   // 30s countdown clock state
   const [autoCountdown, setAutoCountdown] = useState(30);
   const [autoCountdownActive, setAutoCountdownActive] = useState(true);
@@ -23,17 +23,32 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
       const timer = setTimeout(() => setAutoCountdown(c => c - 1), 1000);
       return () => clearTimeout(timer);
     } else if (autoCountdown === 0 && autoCountdownActive) {
-      // Set all players to ready and start the game
+      // Set player to ready and stop countdown
       if (players && players.length > 0 && currentUser && lobbyCode) {
         sendMessage({ type: 'set_ready', code: lobbyCode, ready: true });
       }
       setAutoCountdownActive(false);
     }
   }, [autoCountdown, autoCountdownActive, players, currentUser, lobbyCode, sendMessage]);
+
+  // Restart timer if player goes from ready to not ready
+  const prevIsReadyRef = useRef(currentUser?.isReady);
+  useEffect(() => {
+    if (!currentUser) return;
+    if (prevIsReadyRef.current && !currentUser.isReady) {
+      setAutoCountdown(30);
+      setAutoCountdownActive(true);
+    }
+    prevIsReadyRef.current = currentUser.isReady;
+  }, [currentUser]);
   // NEW: A ref to hold the Audio object, preventing it from being re-created on every render.
   const countdownSoundRef = useRef(null);
   // NEW: A ref that acts as a flag to ensure the sound plays only once per countdown.
   const countdownPlayed = useRef(false);
+  // Ready sound effect
+  const readySoundRef = useRef(null);
+  // Track if ready sound has been played for this ready event
+  const readyPlayedRef = useRef(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -54,19 +69,36 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
     }
   }, [currentUser]);
 
-  // NEW: This effect hook runs only once on mount to create the audio object.
+  // NEW: This effect hook runs only once on mount to create the audio objects.
   useEffect(() => {
-    // NEW: The audio path is corrected to '/sounds/Countdown.mp3' for consistency.
     countdownSoundRef.current = new Audio('/sounds/Countdown.mp3');
-
-    // NEW: A cleanup function is returned to properly handle the audio object when the component unmounts.
+    readySoundRef.current = new Audio('/sounds/Ready.mp3');
+    // Cleanup
     return () => {
       if (countdownSoundRef.current) {
         countdownSoundRef.current.pause();
         countdownSoundRef.current = null;
       }
+      if (readySoundRef.current) {
+        readySoundRef.current.pause();
+        readySoundRef.current = null;
+      }
     };
-  }, []); // NEW: The empty dependency array ensures this effect runs only once.
+  }, []);
+  // Play Ready.mp3 when player status changes to ready
+  useEffect(() => {
+    if (!currentUser) return;
+    if (currentUser.isReady && !readyPlayedRef.current) {
+      if (readySoundRef.current) {
+        readySoundRef.current.volume = 0.7;
+        readySoundRef.current.currentTime = 0;
+        readySoundRef.current.play().catch(() => {});
+      }
+      readyPlayedRef.current = true;
+    } else if (!currentUser.isReady) {
+      readyPlayedRef.current = false;
+    }
+  }, [currentUser?.isReady]);
 
   // This useEffect block handles playing the sound when the 'isStarting' prop changes.
   useEffect(() => {
@@ -149,17 +181,24 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
     );
   }
 
-  return (
-    <>
-      {/* 30s countdown clock at top right */}
-      {autoCountdownActive && (
-        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
-          <div className="flex items-center gap-2 bg-gray-900/90 px-4 py-2 rounded-lg shadow text-white font-bold text-lg">
-            <span>Auto-Ready in</span>
-            <span className="text-yellow-400 font-mono">{autoCountdown}s</span>
-          </div>
-        </div>
-      )}
+  return (
+    <>
+      {/* 30s countdown clock at top right, or ready icon if ready */}
+      {currentUser?.isReady ? (
+        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
+          <div className="flex items-center gap-2 bg-green-600/90 px-4 py-2 rounded-lg shadow text-white font-bold text-lg">
+            <CheckCircle2 size={22} className="text-white" />
+            <span>Ready</span>
+          </div>
+        </div>
+      ) : (
+        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
+          <div className="flex items-center gap-2 bg-gray-900/90 px-4 py-2 rounded-lg shadow text-white font-bold text-lg">
+            <span>Auto-Ready in</span>
+            <span className="text-yellow-400 font-mono">{autoCountdown}s</span>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3 rounded-lg bg-gray-800 p-4">
         {players.map(player => (

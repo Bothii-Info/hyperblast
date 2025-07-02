@@ -1058,6 +1058,10 @@ const PlayerPage = () => {
   // Updated hit detection with proper coordinate transformation
   const handleShoot = () => {
     if (health <= 0 || isMenuOpen || isReloading || gameStarting) return;
+    // Vibrate on every shot (if supported)
+    if (navigator.vibrate) {
+      navigator.vibrate(60);
+    }
     setIsReloading(true);
     // Add code for the reload duration
     let classFromStorage = localStorage.getItem('playerClass');
