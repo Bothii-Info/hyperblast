@@ -528,7 +528,7 @@ const PlayerPage = () => {
   // Will add in functionality for it later
   const handlePlayerHit = (personId) => {
     setShowHitIndicator('hit');
-    setScore(s => {
+    setScore(s => { 
       // TODO: Add code for different gun classes and their score multipliers
       const newScore = s + 50;
       if (!ws) {
