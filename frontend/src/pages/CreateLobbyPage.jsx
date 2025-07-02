@@ -5,7 +5,7 @@ import Button from '../components/Button';
 import  Input  from '../components/Input';
 import { ClassSelector } from '../components/ClassSelector';
 import { Users, Gamepad2, Swords, User } from 'lucide-react';
-// import { useWebSocket } from '../WebSocketContext'; // Assuming you have a WebSocket context
+import { useWebSocket } from '../WebSocketContext'; // Assuming you have a WebSocket context
 
 /**
  * Page for creating a new game lobby with class selection.
@@ -17,34 +17,55 @@ const CreateLobbyPage = () => {
   const [selectedClass, setSelectedClass] = useState('Pistol'); // Default class
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  // const { sendMessage } = useWebSocket();
+  const { sendMessage, lastMessage, wsStatus, ws } = useWebSocket();
+
+  // Listen for lobby_created response
+  React.useEffect(() => {
+    if (!lastMessage) return;
+    try {
+      const msg = JSON.parse(lastMessage);
+      if (msg.type === 'lobby_created') {
+        setIsLoading(false);
+        navigate(`/lobby/${msg.code}/waitlist`);
+      } else if (msg.type === 'lobby_list' && Array.isArray(msg.lobbies) && msg.lobbies.length > 0 && isLoading) {
+        // Use the last lobby in the list (most recently created) - This logic might need refinement
+        // A better approach would be to ensure 'lobby_created' message is always received with the correct code
+        const lastLobby = msg.lobbies[msg.lobbies.length - 1];
+        if (lastLobby && lastLobby.code) {
+          setIsLoading(false);
+          navigate(`/lobby/${lastLobby.code}/waitlist`);
+        }
+      } else if (msg.type === 'lobby_error') {
+        setIsLoading(false);
+        alert(msg.message || 'Failed to create lobby.');
+      }
+    } catch (e) {}
+  }, [lastMessage, navigate, isLoading]);
 
   const handleCreateLobby = () => {
-    if (!username.trim() || !lobbyName.trim()) {
-      alert('Please enter your username and a lobby name.');
+    // Validate that both name and code are filled out
+    if (lobbyName.trim() === '') {
+      alert('Please provide a Lobby Name');
+      return;
+    }
+    if (username.trim() === '') { // Validate username
+      alert('Please enter your username.');
+      return;
+    }
+    if (wsStatus !== 'open') {
+      alert('WebSocket not connected.');
       return;
     }
     setIsLoading(true);
-
-    // --- BACKEND INTEGRATION GUIDE ---
-    // Send all relevant info, including the chosen class, to the backend.
-    const lobbyData = {
+    sendMessage({
       type: 'create_lobby',
-      name: lobbyName.trim(),
+      name: lobbyName.trim(), // Trim lobby name
       maxPlayers: maxPlayers,
-      username: username.trim(),
-      playerClass: selectedClass, // Include the selected class
-      role: 'player'
-    };
-    console.log("Creating Lobby with data:", lobbyData);
-    // sendMessage(lobbyData);
-    
-    // Simulate backend response and navigate
-    setTimeout(() => {
-        const fakeLobbyCode = "HBLAST1";
-        navigate(`/lobby/${fakeLobbyCode}/waitlist`);
-    }, 1000);
+      username: username.trim(), // Send username
+      role: 'player' // Ensure role is set to player
+    });
   };
+
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#2c1a4d] to-[#100c28] text-white">
