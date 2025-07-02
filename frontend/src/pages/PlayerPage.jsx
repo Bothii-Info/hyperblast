@@ -32,7 +32,7 @@ const PlayerPage = () => {
   const [showHitIndicator, setShowHitIndicator] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [gameStarting, setGameStarting] = useState(false);
-  const [startCountdown, setStartCountdown] = useState(3);
+  const [startCountdown, setStartCountdown] = useState(4);
 
   // --- Sound Effects ---
   const hitSoundRef = useRef(null);
