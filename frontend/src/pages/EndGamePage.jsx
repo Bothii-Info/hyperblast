@@ -16,12 +16,15 @@ const EndGamePage = () => {
   const [winner, setWinner] = useState(null);
   const [leaderboardData, setLeaderboardData] = useState([]);
   const { ws } = useWebSocket();
+  let firstTime = true;
 
   useEffect(() => {
     if (!ws) return;
     const handleMessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (!firstTime) return; // Only run this effect once
+        firstTime = false; // Set to false after the first run
         if (data.type === 'lobby_status' && data.players) {
           // players: array of { id, name, score }
           const sortedPlayers = [...data.players].sort((a, b) => b.score - a.score);
