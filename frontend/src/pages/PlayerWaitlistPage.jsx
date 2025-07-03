@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'; // NEW: Added useRef for robust sound handling.
-import { Crown, CheckCircle2, XCircle, Pencil } from 'lucide-react';
+import {  Crown, CheckCircle2, XCircle, Pencil, Target, Shield, Crosshair, Users, Clock, Zap } from 'lucide-react';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import PlayerScan from '../components/PlayerScan';
@@ -19,6 +19,45 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
   // 30s countdown effect for top right clock
   // Track if we should show the scan face warning
   const [showScanFaceWarning, setShowScanFaceWarning] = useState(false);
+
+  // Get weapon info for display
+  const getWeaponInfo = (weaponClass) => {
+    switch (weaponClass?.toLowerCase()) {
+      case "pistol":
+        return {
+          name: "Pistol",
+          icon: <Target size={16} className="text-blue-400" />,
+          color: "text-blue-400",
+          bgColor: "bg-blue-400/20",
+          borderColor: "border-blue-400/40",
+        }
+      case "shotgun":
+        return {
+          name: "Shotgun",
+          icon: <Shield size={16} className="text-red-400" />,
+          color: "text-red-400",
+          bgColor: "bg-red-400/20",
+          borderColor: "border-red-400/40",
+        }
+      case "archer":
+        return {
+          name: "Bow",
+          icon: <Crosshair size={16} className="text-green-400" />,
+          color: "text-green-400",
+          bgColor: "bg-green-400/20",
+          borderColor: "border-green-400/40",
+        }
+      default:
+        return {
+          name: "Unknown",
+          icon: <Target size={16} className="text-gray-400" />,
+          color: "text-gray-400",
+          bgColor: "bg-gray-400/20",
+          borderColor: "border-gray-400/40",
+        }
+    }
+  }
+
   useEffect(() => {
     if (!autoCountdownActive) return;
     if (autoCountdown > 0) {
@@ -169,110 +208,293 @@ const PlayerWaitlistPage = ({ players, currentUser, lobbyCode, isStarting, count
 
   if (!currentUser && !isStarting) { // Added a check for currentUser to prevent rendering issues before data loads
     return (
-      <div className="text-center text-gray-400">
-        Loading player data...
+      <div className="text-center px-4">
+        <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-3xl p-8 border border-[#2a3441]/30 max-w-sm mx-auto">
+          <div className="w-8 h-8 border-2 border-[#e971ff] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[#b7b4bb]">Loading battle data...</p>
+        </div>
       </div>
     );
   }
 
   if (isStarting) {
     return (
-      <div className="text-center">
-        <div className="relative mx-auto h-32 w-32">
-            <svg className="h-full w-full" viewBox="0 0 100 100">
-                <circle className="stroke-current text-gray-700" strokeWidth="10" cx="50" cy="50" r="40" fill="transparent"></circle>
-                <circle
-                    className="stroke-current text-indigo-500 transition-all duration-1000 linear"
-                    strokeWidth="10"
-                    strokeDasharray="251.2"
-                    strokeDashoffset={251.2 - (countdown / 3) * 251.2}
-                    strokeLinecap="round"
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    fill="transparent"
-                    transform="rotate(-90 50 50)"
-                ></circle>
+       <div className="text-center px-4">
+        <div className="max-w-sm mx-auto">
+          <div className="relative mx-auto h-40 w-40 mb-8">
+            <svg className="h-full w-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle className="stroke-[#2a3441]" strokeWidth="6" cx="50" cy="50" r="40" fill="transparent" />
+              <circle
+                className="stroke-[#e971ff] transition-all duration-1000 linear drop-shadow-lg"
+                strokeWidth="6"
+                strokeDasharray="251.2"
+                strokeDashoffset={251.2 - (countdown / 3) * 251.2}
+                strokeLinecap="round"
+                cx="50"
+                cy="50"
+                r="40"
+                fill="transparent"
+              />
             </svg>
-            <div className="absolute inset-0 flex items-center justify-center text-4xl font-bold">{countdown}</div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-5xl font-bold text-white drop-shadow-lg">{countdown}</span>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-3xl p-6 border-2 border-[#e971ff]/40 shadow-2xl">
+            <h3 className="text-3xl font-bold text-white mb-2">Battle Begins!</h3>
+            <p className="text-[#b7b4bb] mb-4">Lock and load, warrior!</p>
+            <div className="flex items-center justify-center gap-2 text-[#e971ff]">
+              <Zap size={20} className="animate-pulse" />
+              <span className="text-sm font-medium">Weapons charging...</span>
+            </div>
+          </div>
         </div>
-        <h3 className="mt-4 text-2xl font-bold">Game Starting...</h3>
-        <p className="text-gray-400">Get ready!</p>
       </div>
     );
   }
 
-  return (
-    <>
-      {/* 30s countdown clock at top right, or ready icon if ready */}
-      {currentUser?.isReady ? (
-        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
-          <div className="flex items-center gap-2 bg-green-600/90 px-4 py-2 rounded-lg shadow text-white font-bold text-lg">
-            <CheckCircle2 size={22} className="text-white" />
-            <span>Ready</span>
-          </div>
-        </div>
-      ) : (
-        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 100 }}>
-          <div className="flex items-center gap-2 bg-gray-900/90 px-4 py-2 rounded-lg shadow text-white font-bold text-lg">
-            <span>Auto-Ready in</span>
-            <span className="text-yellow-400 font-mono">{autoCountdown}s</span>
-          </div>
-        </div>
-      )}
+  const readyPlayersCount = players.filter((p) => p.isReady).length
 
-      <div className="space-y-3 rounded-lg bg-gray-800 p-4">
-        {players.map(player => (
-          <div key={player.id} className="flex items-center justify-between rounded-md bg-white/5 p-3">
-            <div className="flex items-center gap-3">
-              {player.isHost && <Crown size={20} className="text-yellow-400" />}
-              {isEditingName && player.id === currentUser.id ? (
-                <Input value={nameInputValue} onChange={(e) => setNameInputValue(e.target.value)} />
-              ) : (
-                <span className="font-semibold">{player.name} {player.id === currentUser.id && '(You)'}</span>
+
+  return (
+    <div className="space-y-4 px-4">
+      {/* Mobile-first status indicators */}
+      {currentUser?.isReady ? (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-2 rounded-full shadow-lg">
+            <CheckCircle2 size={18} className="text-white animate-pulse" />
+            <span className="text-white font-bold text-sm">READY</span>
+          </div>
+        </div>
+      ) : (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2 rounded-full shadow-lg">
+            <Clock size={16} className="text-white" />
+            <span className="text-white font-mono text-sm font-bold">{autoCountdown}s</span>
+          </div>
+        </div>
+      )}
+
+      {/* Battle Status Header */}
+      <div className="bg-gradient-to-r from-[#1f152b] via-[#2a1b3d] to-[#1f152b] rounded-2xl p-4 border border-[#9351f7]/30 shadow-xl">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <Users size={20} className="text-[#e971ff]" />
+            Battle Squad
+          </h2>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-[#e971ff]">
+              {readyPlayersCount}/{players.length}
+            </div>
+            <div className="text-xs text-[#b7b4bb]">ready</div>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="bg-[#0f051d] rounded-full h-2 overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-[#741ff5] to-[#e971ff] transition-all duration-500"
+            style={{ width: `${players.length > 0 ? (readyPlayersCount / players.length) * 100 : 0}%` }}
+          ></div>
+        </div>
+      </div>
+
+      {/* Enhanced Players List with Weapons */}
+      <div className="space-y-3">
+        {players.map((player, index) => {
+          const weaponInfo = getWeaponInfo(player.class)
+          const isCurrentPlayer = player.id === currentUser?.id
+
+          return (
+            <div
+              key={player.id}
+              className={`
+                relative overflow-hidden rounded-2xl border-2 transition-all duration-300 
+                ${
+                  isCurrentPlayer
+                    ? "bg-gradient-to-r from-[#9351f7]/20 via-[#e971ff]/10 to-[#9351f7]/20 border-[#e971ff]/50 shadow-lg shadow-[#e971ff]/20"
+                    : player.isReady
+                      ? "bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-400/40"
+                      : "bg-gradient-to-r from-[#1f152b] to-[#0f051d] border-[#2a3441]/30"
+                }
+                hover:scale-[1.02] hover:shadow-xl
+              `}
+            >
+              {/* Rank indicator */}
+              <div
+                className={`absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  player.isHost ? "bg-yellow-400 text-black" : "bg-[#9351f7] text-white"
+                }`}
+              >
+                {player.isHost ? <Crown size={12} /> : index + 1}
+              </div>
+
+              <div className="p-4 pl-10">
+                <div className="flex items-center justify-between">
+                  {/* Player info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      {isEditingName && isCurrentPlayer ? (
+                        <Input
+                          value={nameInputValue}
+                          onChange={(e) => setNameInputValue(e.target.value)}
+                          className="text-base font-bold"
+                        />
+                      ) : (
+                        <>
+                          <span
+                            className={`font-bold text-lg truncate ${
+                              isCurrentPlayer ? "text-[#e971ff]" : "text-white"
+                            }`}
+                          >
+                            {player.name}
+                          </span>
+                          {isCurrentPlayer && (
+                            <span className="bg-[#e971ff]/20 text-[#e971ff] px-2 py-1 rounded-full text-xs font-medium">
+                              YOU
+                            </span>
+                          )}
+                          {player.isHost && (
+                            <span className="bg-yellow-400/20 text-yellow-400 px-2 py-1 rounded-full text-xs font-medium">
+                              HOST
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Weapon display */}
+                    <div
+                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${weaponInfo.bgColor} ${weaponInfo.borderColor}`}
+                    >
+                      {weaponInfo.icon}
+                      <span className={`text-sm font-medium ${weaponInfo.color}`}>{weaponInfo.name}</span>
+                    </div>
+                  </div>
+
+                  {/* Ready status */}
+                  <div className="flex flex-col items-center gap-1 ml-4">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        player.isReady ? "bg-green-500" : "bg-red-500/70"
+                      }`}
+                    >
+                      {player.isReady ? (
+                        <CheckCircle2 size={18} className="text-white" />
+                      ) : (
+                        <XCircle size={18} className="text-white" />
+                      )}
+                    </div>
+                    <span className={`text-xs font-medium ${player.isReady ? "text-green-400" : "text-red-400"}`}>
+                      {player.isReady ? "READY" : "WAIT"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Animated ready indicator */}
+              {player.isReady && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-green-400/10 to-transparent animate-pulse"></div>
+                </div>
               )}
             </div>
-            <span className={`flex items-center gap-2 text-sm ${player.isReady ? 'text-green-400' : 'text-red-400'}`}>
-              {player.isReady ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-              {player.isReady ? 'Ready' : 'Not Ready'}
-            </span>
-          </div>
-        ))}
+          )
+        })}
       </div>
-      <div className="mt-4">
-        {/* Face scanning section - only show for the current user */}
-        {currentUser && !isStarting && (
-          <PlayerScan 
+
+      {/* Face Scan Section */}
+      {currentUser && !isStarting && (
+        <div className="bg-gradient-to-br from-[#1f152b] to-[#0f051d] rounded-2xl p-4 border border-[#2a3441]/30 shadow-xl">
+          <PlayerScan
             username={currentUser.name}
             lobbyCode={lobbyCode}
             onScanComplete={() => setIsFaceScanComplete(true)}
           />
-        )}
-      </div>
-      <div className="mt-6 space-y-3">
+        </div>
+      )}
+
+      {/* Action Section */}
+      <div className="space-y-3 pb-4">
         {showScanFaceWarning && !isFaceScanComplete && (
-          <div className="text-center text-red-500 font-bold text-lg">Please scan your face before readying up!</div>
+          <div className="bg-gradient-to-r from-red-500/20 to-orange-500/20 border-2 border-red-400/50 rounded-2xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                <XCircle size={18} className="text-white" />
+              </div>
+              <div>
+                <div className="text-red-400 font-bold">Face Scan Required</div>
+                <div className="text-red-300 text-sm">Complete your scan to ready up!</div>
+              </div>
+            </div>
+          </div>
         )}
+
         {isEditingName ? (
-          <>
-            <Button onClick={handleSaveName} className="bg-green-600 hover:bg-green-700">Save Name</Button>
-            <Button onClick={() => setIsEditingName(false)} className="bg-gray-600 hover:bg-gray-700">Cancel</Button>
-          </>
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              onClick={handleSaveName}
+              className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 rounded-xl"
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={18} />
+                <span>Save</span>
+              </div>
+            </Button>
+            <Button
+              onClick={() => setIsEditingName(false)}
+              variant="outline"
+              className="border-2 border-[#2a3441] text-[#b7b4bb] hover:bg-[#2a3441] bg-transparent rounded-xl"
+            >
+              Cancel
+            </Button>
+          </div>
         ) : (
-          <>
-            <Button onClick={handleReadyToggle} disabled={isEditingName || !isFaceScanComplete} className={`flex items-center justify-center gap-2 ${currentUser?.isReady ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'} ${!isFaceScanComplete ? 'opacity-50 cursor-not-allowed' : ''}`}>
-              {currentUser?.isReady ? <XCircle size={20} /> : <CheckCircle2 size={20} />}
-              <span>{currentUser?.isReady ? 'Set to Not Ready' : 'Ready Up'}</span>
+          <div className="space-y-3">
+            <Button
+              onClick={handleReadyToggle}
+              disabled={isEditingName || !isFaceScanComplete}
+              className={`
+                w-full py-4 rounded-2xl font-bold text-lg transition-all duration-200 transform hover:scale-[1.02]
+                ${
+                  currentUser?.isReady
+                    ? "bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-orange-500 hover:to-red-500 shadow-lg shadow-yellow-500/30"
+                    : "bg-gradient-to-r from-green-600 to-emerald-500 hover:from-emerald-500 hover:to-green-400 shadow-lg shadow-green-500/30"
+                }
+                ${!isFaceScanComplete ? "opacity-50 cursor-not-allowed transform-none" : ""}
+              `}
+            >
+              <div className="flex items-center justify-center gap-3">
+                {currentUser?.isReady ? (
+                  <>
+                    <XCircle size={24} />
+                    <span>Cancel Ready</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={24} />
+                    <span>Ready for Battle!</span>
+                  </>
+                )}
+              </div>
             </Button>
-            <Button onClick={handleEditName} className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700">
-              <Pencil size={18} />
-              <span>Edit Name</span>
+
+            <Button
+              onClick={handleEditName}
+              variant="outline"
+              className="w-full py-3 border-2 border-[#9351f7]/40 text-[#e971ff] hover:bg-[#9351f7]/20 bg-transparent rounded-xl"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Pencil size={18} />
+                <span>Edit Name</span>
+              </div>
             </Button>
-          </>
+          </div>
         )}
       </div>
-    </>
-  );
+    </div>
+  )
 };
 
 export default PlayerWaitlistPage;
