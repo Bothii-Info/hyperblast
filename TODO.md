@@ -6,10 +6,10 @@
 - [x] Image processing algorithm to identify humans.
 - [x] Image processing to determine which player shot (number identification).
 ## MVP Todo
-- [ ] Lobby joining
-- [ ] Game Start
-- [ ] Game end
-- [ ] Score updating
+- [x] Lobby joining
+- [x] Game Start
+- [x] Game end
+- [x] Score updating
 
 ## Classes
 # Classes

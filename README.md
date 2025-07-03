@@ -1,19 +1,17 @@
 # hyperblast
-Web app for BBD's vacation work July 2025. Should be a lazer tag app using phones.
+Web app for BBD's vacation work July 2025. A lazer tag app using phones.
 
 ## Running the app
-The app uses a node backend for websockets. This is found in the backend folder. A react app is used for the frontened. Obviously, this is in the frontend folder.
+The app uses a node backend for websockets. This is found in the backend folder. A react app is used for the frontend. Obviously, this is in the frontend folder.
 First make sure that you have all the node packages installed. Do this by running 
 ```
 npm install
 ```
-To get the app running start by enabling the backend server, by running 
+in both the frontend and backend folders.
+Next, run the same command in the root folder. This installs a package that allows you to run the frontend and the backend concurrently by running
 ```
 npm start
 ```
-in the backend folder. (This starts the server).
-To run the frontend, also run
-```
-npm start
-```
-in the frontend folder.
+in the root folder.
+
+Alternatively, the app is currently deployed on https://hyperblast-sooty.vercel.app/.
