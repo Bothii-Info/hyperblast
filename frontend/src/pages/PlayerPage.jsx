@@ -1016,11 +1016,27 @@ const PlayerPage = () => {
   const [circleTransition, setCircleTransition] = useState('none');
   const CIRCLE_CIRCUMFERENCE = 251.2; // 2 * PI * 40
 
+  // Weapon reload times in ms
+  const weaponReloadTimes = {
+    pistol: 2000,
+    shotgun: 3000,
+    archer: 4000
+  };
+
+  // Helper to get current weapon and reload time
+  const getCurrentWeapon = () => {
+    let classFromStorage = localStorage.getItem('playerClass');
+    let classToUse = (classFromStorage ? classFromStorage.toLowerCase() : 'pistol');
+    return weaponReloadTimes[classToUse] ? classToUse : 'pistol';
+  };
+  const getReloadTime = () => weaponReloadTimes[getCurrentWeapon()] || 2000;
+
   useEffect(() => {
     let offsetTimer;
     if (isReloading) {
-      // Start animation from full to empty
-      setCircleTransition('stroke-dashoffset 2s linear');
+      // Get reload time for current weapon
+      const reloadTime = getReloadTime();
+      setCircleTransition(`stroke-dashoffset ${reloadTime / 1000}s linear`);
       offsetTimer = setTimeout(() => {
         setReloadOffset(0);
       }, 10);
@@ -1029,7 +1045,7 @@ const PlayerPage = () => {
       offsetTimer = setTimeout(() => {
         setCircleTransition('none');
         setReloadOffset(CIRCLE_CIRCUMFERENCE);
-      }, 200); // Wait a short moment after reload ends before resetting
+      }, 200);
     }
     return () => {
       clearTimeout(offsetTimer);
@@ -1063,12 +1079,9 @@ const PlayerPage = () => {
       navigator.vibrate(60);
     }
     setIsReloading(true);
-    // Add code for the reload duration
-    let classFromStorage = localStorage.getItem('playerClass');
-    let increment = 1;
-    if (classFromStorage === 'archer') increment = 7;
-    else if (classFromStorage === 'shotgun') increment = 4;
-    setTimeout(() => setIsReloading(false), increment * 1000); // 2 seconds reload
+    // Use reload time based on weapon
+    const reloadTime = getReloadTime();
+    setTimeout(() => setIsReloading(false), reloadTime);
     let hit = false;
 
     if (segmentationMask && detectedPeople.length > 0 && videoRef.current && canvasRef.current) {
